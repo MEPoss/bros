@@ -15,7 +15,7 @@ import SwiftUI
 /// Which of Search's own pages, and where inside it.
 struct InternalPage: Equatable {
     enum Kind: String, CaseIterable {
-        case settings, history, downloads, bookmarks, passwords, archive
+        case settings, history, downloads, bookmarks, passwords, archive, workspace
         case importing = "import"
         case notes = "release-notes"
     }
@@ -56,6 +56,7 @@ struct InternalPage: Equatable {
         case .bookmarks: return "Bookmarks"
         case .passwords: return "Passwords"
         case .archive: return "Archived Tabs"
+        case .workspace: return "Workspace"
         case .importing: return "Bring Things Over"
         case .notes: return "What's New"
         }
@@ -69,6 +70,7 @@ struct InternalPage: Equatable {
         case .bookmarks: return "book"
         case .passwords: return "key"
         case .archive: return "archivebox"
+        case .workspace: return "tray.full"
         case .importing: return "square.and.arrow.down"
         case .notes: return "sparkles"
         }
@@ -173,6 +175,9 @@ struct InternalPageView: View {
                 .onAppear { browser.relist() }
         case .archive:
             ArchivePanel(browser: browser, archive: browser.archive)
+        case .workspace:
+            WorkspacePanel(browser: browser, space: Workspace.shared, thumbs: WorkspaceThumbs.shared,
+                           nav: WorkspaceNav.shared, column: WorkspaceColumnState.shared)
         case .importing:
             ImportPanel(browser: browser)
         case .notes:

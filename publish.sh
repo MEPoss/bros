@@ -30,7 +30,7 @@ grep -q "\"version\": \"$VERSION\"" "$FROM/appcast.json" \
   || { echo "$FROM/appcast.json isn't $VERSION — build it again first" >&2; exit 1; }
 CHIP="$(mktemp -d)"
 ditto -x -k "$FROM/Search.zip" "$CHIP"
-[ "$(lipo -archs "$CHIP/Search.app/Contents/MacOS/Search")" = "$ARCH" ] \
+[ "$(lipo -archs "$CHIP/Bros.app/Contents/MacOS/Bros")" = "$ARCH" ] \
   || { rm -rf "$CHIP"; echo "$FROM/Search.zip doesn't hold a $ARCH app — not publishing" >&2; exit 1; }
 rm -rf "$CHIP"
 # The signed feed has to hold up before it goes anywhere: builds from 1.0.4

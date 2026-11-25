@@ -46,15 +46,15 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BUILT = ROOT / "build" / "Search.app"
+BUILT = ROOT / "build" / "Bros.app"
 HOME = os.path.expanduser("~")
 ID = "com.officecommun.search.autocorrect"
 W = f"ac-{hashlib.sha1(str(ROOT).encode()).hexdigest()[:8]}"
 SUPPORT = f"{HOME}/Library/Application Support/Search ({W})"
 SUITE = f"com.officecommun.search.test.{W}"
 SOCK = f"{SUPPORT}/bench.sock"
-COPY = Path(tempfile.mkdtemp(prefix="ac-probe-")) / "Search.app"
-EXE = str(COPY / "Contents" / "MacOS" / "Search")
+COPY = Path(tempfile.mkdtemp(prefix="ac-probe-")) / "Bros.app"
+EXE = str(COPY / "Contents" / "MacOS" / "Bros")
 
 PAGE = b"""<!doctype html><title>typing</title>
 <input id=i autocomplete=off><textarea id=t></textarea><div id=e contenteditable></div>"""

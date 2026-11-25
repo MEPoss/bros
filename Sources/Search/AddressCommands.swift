@@ -20,6 +20,7 @@ enum AddressCommand: Equatable {
     case newPrivateTab
     case newSpace
     case bookmarks
+    case workspace
     case history
     case downloads
     case passwords
@@ -31,7 +32,7 @@ enum AddressCommand: Equatable {
 
     /// The words, which run on Return when typed whole.
     static let allCases: [AddressCommand] = [
-        .settings, .newTab, .newPrivateTab, .newSpace, .bookmarks, .history, .downloads, .passwords, .toggleSidebar,
+        .settings, .newTab, .newPrivateTab, .newSpace, .bookmarks, .workspace, .history, .downloads, .passwords, .toggleSidebar,
     ]
 
     /// What you'd type to reach it. The first is what the list shows.
@@ -42,6 +43,7 @@ enum AddressCommand: Equatable {
         case .newPrivateTab: return ["new private tab", "private tab"]
         case .newSpace: return ["new space"]
         case .bookmarks: return ["bookmarks"]
+        case .workspace: return ["workspace"]
         case .history: return ["history"]
         case .downloads: return ["downloads"]
         case .passwords: return ["passwords"]
@@ -70,7 +72,7 @@ enum AddressCommand: Equatable {
         case .passwords: return "app.passwords"
         case .toggleSidebar: return "view.sidebar"
         case .menu(let id): return id
-        case .newSpace, .page: return nil
+        case .newSpace, .workspace, .page: return nil
         }
     }
 
@@ -94,6 +96,7 @@ enum AddressCommand: Equatable {
         case .newPrivateTab: browser.newShyTab()
         case .newSpace: browser.askForSpace()
         case .bookmarks: browser.bookmarking = true
+        case .workspace: browser.lead(to: InternalPage(.workspace))
         case .history: browser.recalling = true
         case .downloads: browser.showDownloads()
         case .passwords: browser.managing = true
@@ -135,7 +138,7 @@ enum AddressCommand: Equatable {
     /// Menu commands that make no sense from the field: it is already open,
     /// there is nothing found to step through, or the key must be held.
     private static let unoffered: Set<String> = [
-        "file.openAddress", "edit.findNext", "edit.findPrevious", Command.recentTabs, "tabs.search",
+        "file.openAddress", "edit.findNext", "edit.findPrevious", Command.recentTabs,
     ]
     /// Those the menu greys out without a web page in front.
     private static let needsPage: Set<String> = [

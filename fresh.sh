@@ -28,15 +28,21 @@ else
 fi
 STORE=$(printf '5E4C%04X-%04X-4000-8000-000000000001' $((HASH >> 16)) $((HASH & 0xFFFF)))
 
+# The test world kept under the name Search, before this was Bros: moved over
+# once, so that coming back to it finds what was there.
+OLD="$HOME/Library/Application Support/Search ($WORLD)"
+NEW="$HOME/Library/Application Support/Bros ($WORLD)"
+if [ "${1:-}" = "again" ] && [ -d "$OLD" ] && [ ! -d "$NEW" ]; then mv "$OLD" "$NEW"; fi
+
 if [ "${1:-}" != "again" ]; then
-  rm -rf "$HOME/Library/Application Support/Search ($WORLD)"
+  rm -rf "$HOME/Library/Application Support/Bros ($WORLD)"
   defaults delete "$SUITE" 2>/dev/null || true
   # Store.probeStore(1), the fixed identifier of the world's website data.
-  rm -rf "$HOME/Library/WebKit/com.officecommun.search/WebsiteDataStore/$STORE"
+  rm -rf "$HOME/Library/WebKit/app.bros.browser/WebsiteDataStore/$STORE"
   echo "world \"$WORLD\" wiped"
 fi
 
-[ -d "build/Search.app" ] || ./build.sh release
+[ -d "build/Bros.app" ] || ./build.sh release
 
 # A world the bench is going to drive opens hidden. A test run that comes to
 # the front trips the probe's own guard, which hides the app and then refuses
@@ -47,4 +53,4 @@ HIDDEN=""
 if [ "$(defaults read "$SUITE" bench 2>/dev/null || true)" = 1 ]; then
   HIDDEN="-g -j"
 fi
-open -n $HIDDEN --env SEARCH_PROBE="$WORLD" "build/Search.app"
+open -n $HIDDEN --env SEARCH_PROBE="$WORLD" "build/Bros.app"

@@ -2157,6 +2157,7 @@ final class Bench {
                 case .bookmark: "bookmark"
                 case .known: "known"
                 case .elsewhere: "elsewhere"
+                case .kept: "kept"
                 case .command: "command"
                 }
             }

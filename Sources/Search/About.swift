@@ -53,7 +53,7 @@ struct AboutView: View {
                 .resizable()
                 .frame(width: 72, height: 72)
                 .padding(.bottom, 10)
-            Text(verbatim: "Search")
+            Text(verbatim: Brand.name)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Palette.ink)
             Text(verbatim: AboutView.versionLine)

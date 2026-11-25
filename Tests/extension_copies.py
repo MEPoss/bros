@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-APP = str(ROOT / "build" / "Search.app")
+APP = str(ROOT / "build" / "Bros.app")
 W = "ext-copies"
 SUPPORT = os.path.expanduser(f"~/Library/Application Support/Search ({W})")
 SUITE = f"com.officecommun.search.test.{W}"
@@ -123,7 +123,7 @@ def main():
         if cond: passed += 1; print("  ok  ", name)
         else: failed += 1; print("  FAIL", name, extra)
 
-    if pids(): sys.exit("another build/Search.app runs: quit it first")
+    if pids(): sys.exit("another build/Bros.app runs: quit it first")
     wipe()
     for key in ["bench", "welcomed"]:
         subprocess.run(["defaults", "write", SUITE, key, "-bool", "true"])

@@ -290,6 +290,9 @@ struct Omnibox: View {
                 } else if offer.kind == .elsewhere {
                     // Open on another device: iCloud Tabs' mark.
                     symbol("laptopcomputer.and.iphone")
+                } else if offer.kind == .kept {
+                    // Kept in the Workspace, not open.
+                    symbol("tray.full")
                 } else if offer.pinned {
                     symbol("pin")
                 }

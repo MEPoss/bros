@@ -6522,6 +6522,19 @@ final class Browser: NSObject, ObservableObject {
         }
     }
 
+    /// ⌥⌘↓ and ⌥⌘↑ in the tab column: the page under the one on screen, or
+    /// the one over it, in the list as it is drawn, going round from the last
+    /// to the first and back. Not ⌃Tab's walk (`step`), which
+    /// goes round the tabs in the order they are kept in, not the one they
+    /// are shown in.
+    func stepInColumn(_ direction: Int) {
+        let row = shownTabs
+        let anchor = activeSplit?.left ?? activeID
+        let here = row.firstIndex { $0.id == anchor }
+        guard let next = WorkspaceTree.stepIndex(of: here, count: row.count, direction: direction) else { return }
+        select(entry(row[next]))
+    }
+
     /// Where a key that picks a place in the row lands: a pair's page that
     /// had the keys last, not always its first.
     private func entry(_ tab: Tab) -> Tab {
@@ -7927,7 +7940,8 @@ final class Browser: NSObject, ObservableObject {
             if siteChip == nil { pastSearches = nil }
         }
         guard !summoning else {
-            offers = openPages(matching: typed)
+            let open = openPages(matching: typed)
+            offers = open + keptPages(matching: typed, besides: open)
             // What Return does with words no open page answers to, as a row of
             // its own after the pages that do: a new tab, so the page ⌘K was
             // pressed over stays as it was (⌘L is the key for changing it).

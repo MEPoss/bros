@@ -20,6 +20,8 @@ struct SideBar: View {
     @ObservedObject var prefs: Preferences
     @ObservedObject private var agents = AgentControl.shared
     @ObservedObject private var updater = Updater.shared
+    /// Whether the column shows the Workspace in place of the tabs.
+    @ObservedObject private var workspaceColumn = WorkspaceColumnState.shared
     @Environment(\.colorScheme) private var colourScheme
     /// On the window's ground, beside the page's card (see CardEdge): the
     /// ground's colour and no edge of its own, the card's edge being the line.
@@ -290,8 +292,13 @@ struct SideBar: View {
 
                 // The spaces side by side, as pages: two fingers sideways move
                 // the one on screen and the next one together, the next one
-                // coming in as this one goes, with nothing between them.
-                pages
+                // coming in as this one goes, with nothing between them. Or,
+                // when asked for, the Workspace in their place.
+                if workspaceColumn.on && !icons {
+                    WorkspaceColumn(browser: browser, state: workspaceColumn, nav: WorkspaceNav.shared, space: Workspace.shared)
+                } else {
+                    pages
+                }
 
                 Spacer(minLength: 0)
             }
@@ -1700,6 +1707,18 @@ struct SideBar: View {
 
 }
 
+/// The Workspace's door in the foot: the tab column becomes the Workspace,
+/// and back (WorkspaceColumnState).
+private struct WorkspaceDoor: View {
+    @ObservedObject var browser: Browser
+    @ObservedObject private var state = WorkspaceColumnState.shared
+
+    var body: some View {
+        Door(icon: state.on ? "tray.full.fill" : "tray.full", on: state.on, help: "Workspace",
+             shortcut: "workspace.sidebar") { browser.toggleWorkspace() }
+    }
+}
+
 /// The row at the bottom of the column. Never wider than the column: wider,
 /// the column took its width, and centred in its own frame it slid half the
 /// overflow off each side (#535). The space's door, the puzzle, bookmarks and
@@ -1729,6 +1748,7 @@ private struct SideFoot: View {
                 FetchDoor(browser: browser, fetches: fetches, arrowEdge: prefs.sidePosition == .right ? .leading : .trailing, live: live)
                 ExtensionSlot(browser: browser, edge: prefs.sidePosition == .right ? .leading : .trailing, room: 0, puzzle: !prefs.hidesExtensionsDoor, live: live)
                 if !prefs.hidesBookmarksDoor { BookmarkDoor(browser: browser, arrowEdge: prefs.sidePosition == .right ? .leading : .trailing) }
+                WorkspaceDoor(browser: browser)
                 SpaceButtons(browser: browser, vertical: true)
                 if prefs.usesSpaces && !prefs.showsSpaceButtons { SpaceDot(browser: browser) }
                 if prefs.showsProfileDoor { ProfileBadge(browser: browser) }
@@ -1745,6 +1765,7 @@ private struct SideFoot: View {
                 if prefs.usesSpaces && !prefs.showsSpaceButtons { SpaceDot(browser: browser, names: false) }
                 FetchDoor(browser: browser, fetches: fetches, arrowEdge: .bottom, live: live)
                 if !prefs.hidesBookmarksDoor { BookmarkDoor(browser: browser, arrowEdge: .bottom) }
+                WorkspaceDoor(browser: browser)
                 SpaceButtons(browser: browser)
                 ExtensionSlot(browser: browser, edge: .bottom, room: room, puzzle: !prefs.hidesExtensionsDoor, live: live)
             }
@@ -1754,6 +1775,7 @@ private struct SideFoot: View {
                 if prefs.usesSpaces && !prefs.showsSpaceButtons { SpaceDot(browser: browser) }
                 ExtensionSlot(browser: browser, edge: prefs.sidePosition == .right ? .leading : .trailing, room: room, puzzle: !prefs.hidesExtensionsDoor, live: live)
                 if !prefs.hidesBookmarksDoor { BookmarkDoor(browser: browser, arrowEdge: prefs.sidePosition == .right ? .leading : .trailing) }
+                WorkspaceDoor(browser: browser)
                 SpaceButtons(browser: browser, squeezes: true)
                 // Only while a download is running, and a moment after.
                 FetchDoor(browser: browser, fetches: fetches, arrowEdge: prefs.sidePosition == .right ? .leading : .trailing, live: live)
@@ -1776,6 +1798,7 @@ private struct SideFoot: View {
         var kept = spaces  // a button per space (SpaceButtons)
         if !prefs.hidesExtensionsDoor { kept += 1 }  // the puzzle
         if !prefs.hidesBookmarksDoor { kept += 1 }
+        kept += 1  // the Workspace
         if prefs.usesSpaces && !prefs.showsSpaceButtons { kept += 1 }  // the dot
         if prefs.showsProfileDoor { kept += 1 }
         if FetchDoor.shows(fetches, prefs, hanging: hanging) { kept += 1 }
@@ -1788,6 +1811,7 @@ private struct SideFoot: View {
         var kept = 1 + spaces  // downloads and a button per space
         if !prefs.hidesExtensionsDoor { kept += 1 }  // the puzzle
         if !prefs.hidesBookmarksDoor { kept += 1 }
+        kept += 1  // the Workspace
         if prefs.usesSpaces && !prefs.showsSpaceButtons { kept += 1 }  // the dot
         if prefs.showsProfileDoor { kept += 1 }
         return CGFloat(kept) * (26 + 2) - 2

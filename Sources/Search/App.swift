@@ -64,7 +64,7 @@ struct SearchApp: App {
         // shares, and a probe resized for a test once changed the size the
         // real window came back at. The other windows' frames are in
         // windows.json (see Windows.swift).
-        Window("Search", id: Browsers.sceneID) {
+        Window(Brand.name, id: Browsers.sceneID) {
             SceneRoot(slot: SceneSlot.shared)
                 .frame(minWidth: 640, minHeight: 420)
         }
@@ -322,8 +322,14 @@ struct SearchApp: App {
                     .shortcut("tabs.next")
                 Button("Previous Tab") { browser.step(-1) }
                     .shortcut("tabs.previous")
-                Button("Search Tabs…") { browser.summon() }
-                    .shortcut("tabs.search")
+                Button("Next Link in Workspace") { browser.stepColumn(1) }
+                    .shortcut("tabs.columnNext")
+                Button("Previous Link in Workspace") { browser.stepColumn(-1) }
+                    .shortcut("tabs.columnPrevious")
+                Button("Next Section in Workspace") { browser.stepSection(1) }
+                    .shortcut("workspace.sectionNext")
+                Button("Previous Section in Workspace") { browser.stepSection(-1) }
+                    .shortcut("workspace.sectionPrevious")
                 Divider()
                 if browser.prefs.splitView {
                     // The same key puts a pair apart: on a pair, the item
@@ -416,6 +422,13 @@ struct SearchApp: App {
                     .disabled(!(browser.active?.isWeb ?? false))
                 Button("Show Bookmarks…") { browser.bookmarking = true }
                     .shortcut("bookmarks.show")
+                Button(browser.pageKeptInWorkspace ? "Kept in Workspace" : "Keep Page in Workspace") { browser.keepInWorkspace() }
+                    .shortcut("workspace.keep")
+                    .disabled(!(browser.active?.isWeb ?? false))
+                Button("Workspace in Sidebar") { browser.toggleWorkspace() }
+                    .shortcut("workspace.sidebar")
+                Button("Show Workspace…") { browser.lead(to: InternalPage(.workspace)) }
+                    .shortcut("workspace.show")
                 Toggle("Show Bookmarks Bar", isOn: Binding(
                     get: { browser.prefs.bookmarksBar },
                     set: { on in withAnimation(Motion.glide) { browser.prefs.bookmarksBar = on } }
@@ -495,7 +508,7 @@ struct SearchApp: App {
             // (About.swift); then Check for Updates…, as in any Mac app, and
             // What's New…, this version's card again (idea 968).
             CommandGroup(replacing: .appInfo) {
-                Button("About Search") { AboutWindow.show() }
+                Button("About \(Brand.name)") { AboutWindow.show() }
                 UpdateMenuItem()
                 Button("What's New…") { WhatsNew.showAgain(in: browser) }
                     .disabled(WhatsNew.current == nil)
@@ -521,7 +534,7 @@ private struct QuitAndHelp: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .appTermination) {
-            Button("Quit Search") {
+            Button("Quit \(Brand.name)") {
                 if Links.shouldQuit() { NSApp.terminate(nil) }
             }
             .keyboardShortcut("q", modifiers: .command)
@@ -1542,6 +1555,7 @@ struct ContentView: View {
                 guard let window, event.window === window else { return event }
                 Browser.lastClose = nil
                 Browser.lastMove = nil
+                WorkspaceKeys.shared.clicked(event)
                 // A click on the tab switcher, in this window only (see
                 // Browser.clickTabSwitcher), turned into the top-left
                 // coordinates SwiftUI's frames are in.
@@ -1641,6 +1655,8 @@ struct ContentView: View {
                 FullScreenEscape.shared.press(event, leaving: window)
                 return nil
             }
+            // The Workspace's arrows, while it has them (WorkspaceKeys).
+            if browser.workspaceKey(event, in: window) { return nil }
             return take(event) ? nil : event
         }
         ContentView.keyHooks[id] = { event in
@@ -2117,6 +2133,17 @@ struct ContentView: View {
             return true
         }
 
+        // ⌥⌘ and the arrows walk the Workspace's list. Taken here, ahead of
+        // the page: a text field on it (Google's, which a page raises on its
+        // own) used the keys for its caret and the menu never heard them.
+        if let combo = KeyCombo(event: event), !browser.editing, !browser.launching {
+            let store = ShortcutStore.shared
+            if combo == store.key(for: "tabs.columnNext") { browser.stepColumn(1); return true }
+            if combo == store.key(for: "tabs.columnPrevious") { browser.stepColumn(-1); return true }
+            if combo == store.key(for: "workspace.sectionNext") { browser.stepSection(1); return true }
+            if combo == store.key(for: "workspace.sectionPrevious") { browser.stepSection(-1); return true }
+        }
+
         // Other shortcuts with ⌥ or ⌃ on top are somebody else's.
         guard !flags.contains(.option), !flags.contains(.control) else { return false }
 
@@ -2213,9 +2240,8 @@ struct ContentView: View {
         case "p" where shifted:
             browser.toggleFloat()
         case "k" where !shifted:
-            // Held down, ⌘K walks the list a step at a time; letting go of ⌘
-            // takes wherever it stopped. Pressed afresh, it puts it away.
-            browser.searchTabsKey()
+            // The Workspace (Show Workspace…), on every page.
+            browser.lead(to: InternalPage(.workspace))
         case "s" where shifted:
             browser.toggleSidebar()
         case "s" where !shifted:

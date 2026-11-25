@@ -275,9 +275,10 @@ struct Command: Identifiable {
             $0.switchTabs(backwards: false)
         },
         Command("tabs.previous", "Previous Tab", .tabs, KeyCombo("[", shift: true)) { $0.step(-1) },
-        Command("tabs.search", "Search Tabs…", .tabs, KeyCombo("k")) { browser in
-            browser.searchTabsKey()
-        },
+        Command("tabs.columnNext", "Next Link in Workspace", .tabs, KeyCombo("down", option: true)) { $0.stepColumn(1) },
+        Command("tabs.columnPrevious", "Previous Link in Workspace", .tabs, KeyCombo("up", option: true)) { $0.stepColumn(-1) },
+        Command("workspace.sectionNext", "Next Section in Workspace", .tabs, KeyCombo("right", option: true)) { $0.stepSection(1) },
+        Command("workspace.sectionPrevious", "Previous Section in Workspace", .tabs, KeyCombo("left", option: true)) { $0.stepSection(-1) },
         // ⌥⌘N, Chrome's on the Mac: ⌃⌘S is the Mac's own Show Sidebar, and
         // sits beside ⌘S, which folds the tabs away.
         Command("tabs.split", "Split Current Page", .tabs, KeyCombo("n", option: true)) { browser in
@@ -329,6 +330,9 @@ struct Command: Identifiable {
 
         Command("bookmarks.add", "Add This Page", .bookmarks, KeyCombo("b", shift: true)) { $0.bookmarkCurrent() },
         Command("bookmarks.show", "Show Bookmarks…", .bookmarks, nil) { $0.bookmarking = true },
+        Command("workspace.keep", "Keep Page in Workspace", .bookmarks, KeyCombo("s", option: true)) { $0.keepInWorkspace() },
+        Command("workspace.show", "Show Workspace…", .bookmarks, KeyCombo("k")) { $0.lead(to: InternalPage(.workspace)) },
+        Command("workspace.sidebar", "Workspace in Sidebar", .bookmarks, KeyCombo("o", shift: true)) { $0.toggleWorkspace() },
         Command("bookmarks.bar", "Show Bookmarks Bar", .bookmarks, nil) { browser in
             withAnimation(Motion.glide) { browser.prefs.bookmarksBar.toggle() }
         },

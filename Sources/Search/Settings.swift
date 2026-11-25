@@ -328,7 +328,10 @@ struct SettingsPanel: View {
                     // Keep the rows narrow, not the scroll view: the empty
                     // space beside them must receive scrolling too.
                     .padding(.horizontal, 24)
-                    .frame(maxWidth: asTab ? SettingsPanel.column : .infinity)
+                    // Leading, not centred: a row too wide for the column
+                    // (Themes' picker) spills off its right edge instead of
+                    // pushing the whole column left of the title.
+                    .frame(maxWidth: asTab ? SettingsPanel.column : .infinity, alignment: .leading)
                     .frame(maxWidth: .infinity)
                 }
                 .onAppear { if let lit { reader.scrollTo(lit, anchor: .center) } }

@@ -36,6 +36,9 @@ struct Suggestion: Identifiable, Equatable {
         /// A page open on another device, through Sync with iCloud
         /// (ICloudSync.offers).
         case elsewhere
+        /// A link kept in the Workspace (WorkspaceOffers.swift), offered by ⌘K
+        /// under the pages that are open.
+        case kept
         /// Not a place either: something the app itself does.
         case command(AddressCommand)
 

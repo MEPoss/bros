@@ -89,7 +89,7 @@ So anyone can read exactly what a browser handling their passwords and history i
 
 - macOS 14 or later, Xcode 16 / Swift 6 toolchain
 - `swift build` — runs the app straight from the SwiftPM binary
-- `./build.sh` — assembles a real, double-clickable `Search.app` in `build/`, ad-hoc signed so it runs on your own Mac. `SEARCH_DEV=1 ./build.sh` makes it a dev build, on a yellow icon and named for its branch (`Search-split-view` from `claude/split-view-4a6927`), so it's never mistaken for an installed Search or for another worktree's build; `SEARCH_FEATURE=name` picks the name. It shares the installed app's settings and its bundle id, so while both run, a link from another app may land in either
+- `./build.sh` — assembles a real, double-clickable `Bros.app` in `build/`, ad-hoc signed so it runs on your own Mac. `SEARCH_DEV=1 ./build.sh` makes it a dev build, on a yellow icon and named for its branch (`Search-split-view` from `claude/split-view-4a6927`), so it's never mistaken for an installed Search or for another worktree's build; `SEARCH_FEATURE=name` picks the name. It shares the installed app's settings and its bundle id, so while both run, a link from another app may land in either
 
 A build you make yourself won't be notarized or carry Office Commun's Developer ID, so the first launch needs a right-click → Open (or an allow in System Settings → Privacy & Security). That's expected — it's the same thing that happens with any app that isn't from the App Store or a notarized DMG. Your own build also keeps its passwords apart from a signed Search's: the keychain tells the two apart by their signatures.
 
@@ -129,7 +129,7 @@ codex mcp add search-bench -- "$PWD/bench-mcp"
 agy mcp add --type stdio search-bench "$PWD/bench-mcp"
 ```
 
-Each session starts this checkout's `build/Search.app` hidden, in a test world of its own, and wipes that world when it closes; the browser you use is never in reach. Its tools read a page as roles and names, or as an outline of its sections to open one at a time, click with real mouse events, type and check what the field holds, and wait on a condition, and a handle that has gone stale or a button that is covered is an error, never a guess. `python3 Tests/bench_mcp.py` checks it end to end.
+Each session starts this checkout's `build/Bros.app` hidden, in a test world of its own, and wipes that world when it closes; the browser you use is never in reach. Its tools read a page as roles and names, or as an outline of its sections to open one at a time, click with real mouse events, type and check what the field holds, and wait on a condition, and a handle that has gone stale or a button that is covered is an error, never a guess. `python3 Tests/bench_mcp.py` checks it end to end.
 
 To let an agent use the Search you have open instead, turn on Settings › About › Developer › Let coding agents use Search, and give it `./search-mcp`: `claude mcp add search -- "$PWD/search-mcp"`. Search asks you in the window each time one connects, shows a pill with Stop while it is there, and keeps it to tabs of its own; the rules are in `Sources/Search/AgentControl.swift`, and `python3 Tests/agent_control.py` checks them in a hidden probe.
 

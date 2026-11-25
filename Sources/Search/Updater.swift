@@ -157,6 +157,10 @@ final class Updater: ObservableObject {
     /// Search › Check for Updates…: the result is said in the line at the
     /// foot of the window, and an available update is offered in the menu.
     func checkByHand() {
+        if Brand.isFork {
+            say?("\(Brand.name) takes no updates from Search")
+            return
+        }
         switch stage {
         case .ready(let next):
             say?("Search \(next.version) is ready — relaunch to use it")
@@ -179,6 +183,9 @@ final class Updater: ObservableObject {
     /// names, or nil when this is the latest; what becomes of it after that
     /// is said through the line handed to `checkIfDue`.
     func check(then done: @escaping (Release?) -> Void) {
+        // Bros is its own app: Search's feed has nothing for it, and asks
+        // Office Commun's server for nothing on its behalf.
+        guard !Brand.isFork else { done(nil); return }
         guard !checking else { return }
         checking = true
         Task { [weak self] in
