@@ -1,4 +1,67 @@
-# Search
+# Bros
+
+A Mac browser that treats your open tabs like files in a Finder window.
+
+Bros is a fork of [Search](https://github.com/driceroland/Search) by [Office Commun](https://officecommun.com) (MIT). It keeps everything Search is — a small, fast, native WebKit browser with no toolbar and no account — and adds one idea on top: **a Workspace**, where the pages you have open are laid out like files you can sort into folders, mark and find again.
+
+macOS 14 or later · Mac only · [Download the latest `Bros.dmg`](../../releases/latest)
+
+> The app is ad-hoc signed, not notarised. The first time, right-click Bros in Applications and choose Open.
+
+---
+
+## What Bros adds
+
+### The Workspace
+
+Open it with **`⌘K`** (Bookmarks › Show Workspace…), from the door icon at the foot of the tab column, or with **`⇧⌘O`** to put it in the sidebar. It is a *view of your open tabs*, not a list of bookmarks: a page you open appears in the **Inbox** by itself, and a page whose tab you close goes away again unless you filed or kept it.
+
+- **Sections:** Inbox, To do, Due this week, and your own **folders**, nested as deep as you like. The sections are a tree on the left; the links of the one you pick are on the right.
+- **Like files:** each link has a status, a priority (none to high), a due date, tags and notes. Right-click for the menu; set several at once on a selection.
+- **Three views:** icons, a list, or **snapshots**, where each tile is a picture of the page as you last saw it (kept on disk, refreshed while the tab is open).
+- **Drag and drop:** drag links onto a folder or onto the Inbox, and folders onto folders. Pick several with the mouse as in the Finder (click, ⌘-click, ⇧-click, or a rubber band).
+- **Folders where you are:** right-click empty space for *New Folder*, or select links and choose *Create Folder from Selection*.
+- **Keep When Closed:** a link you keep stays in the Workspace after its tab is gone. **`⌥⌘S`** keeps the page in front.
+- **Delete:** ⌫ on selected links asks first, then takes them out and closes their tabs.
+
+### Keyboard first
+
+| Key | Does |
+|---|---|
+| `⌘K` | Show the Workspace |
+| `⇧⌘O` | Workspace in the sidebar, in place of the tab column |
+| `⌥⌘S` | Keep the page in front in the Workspace |
+| `⌥⌘↓` / `⌥⌘↑` | Next / previous page in the list on the left. Goes round from the last to the first. Works with the caret in a page's text field, Google's included. |
+| `⌥⌘→` / `⌥⌘←` | Next / previous section of the Workspace |
+| `↑ ↓ ← →` | Inside the Workspace: move through the sections, open and close folders, and cross to the links on the right and back. `Return` opens. |
+| `⌫` | Delete the selected links (with a confirmation) |
+
+The plain arrows belong to the Workspace until you click on a page, which gives the keyboard back to it. `⇧⌘O` or a click on the Workspace takes it again.
+
+### Other differences from Search
+
+- **`⌘K` is the Workspace.** In Search it lists open tabs by name; that command is gone here.
+- **Its own name and data.** The app is *Bros* (`app.bros.browser`), with its own folder in `~/Library/Application Support/Bros/`, so it never touches a Search install's tabs, bookmarks or passwords.
+- **No self-update.** Bros takes no updates from Search; get new builds from this repo's Releases.
+- The Workspace is stored in `workspace.json`, and its pictures in `workspace-thumbs/`, in that folder.
+
+## Building it
+
+```bash
+./build.sh          # build/Bros.app
+./fresh.sh again    # a throwaway test copy with its own data
+swift test          # the test suite
+```
+
+Needs the Xcode command line tools and Swift 6. Where the code lives: `Sources/Search/Workspace*.swift` (model, panel, column, keys, thumbnails, ⌘K offers) and `Brand.swift` (the name). Everything else is Search's.
+
+## Credits and licence
+
+Bros is built on Search, © Office Commun, MIT licensed; see [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The Workspace is an independent addition; it is not affiliated with or endorsed by Office Commun.
+
+---
+
+## Search, the browser Bros is built on
 
 A small, fast, quiet web browser for the Mac, by [Office Commun](https://officecommun.com).
 
