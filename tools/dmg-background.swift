@@ -32,13 +32,22 @@ func block(_ gx: Int, _ gy: Int, _ size: Int, _ c: (UInt8, UInt8, UInt8)) {
 
 // The field: streaks that run across, as on the site, brighter toward the
 // bottom, kept calm where the labels sit so black or white text both read.
+func smooth(_ a: Double, _ b: Double, _ x: Double) -> Double {
+    let t = min(max((x - a) / (b - a), 0), 1)
+    return t * t * (3 - 2 * t)
+}
 func field(_ gx: Int, _ gy: Int) -> Double {
     let x = Double(gx) / Double(cols), y = Double(gy) / Double(rows)
-    var v = 0.18 + 0.62 * pow(y, 1.4)                       // glow rising from below
-    v += 0.10 * sin(y * 46 + sin(x * 3.2) * 1.6)            // horizontal streaks
-    v += 0.06 * sin(y * 120 + x * 2.0)
-    v += 0.14 * exp(-pow((x - 0.5) * 2.2, 2) - pow((y - 0.62) * 2.6, 2)) // warm centre
-    return min(max(v, 0), 1)
+    let streak = sin(y * 46 + sin(x * 3.2) * 1.6) * 0.6 + sin(y * 120 + x * 2.0) * 0.4
+    // Dark above and below, where white words stand; an even orange between,
+    // where Finder's own labels sit (black or white by the Mac's look): both
+    // keep their contrast there.
+    let header = 1 - smooth(0.22, 0.40, y)
+    let footer = smooth(0.74, 0.84, y)
+    let middle = 0.60 + 0.045 * streak + 0.03 * exp(-pow((x - 0.5) * 2.2, 2) - pow((y - 0.55) * 3, 2))
+    let top = 0.10 + 0.07 * streak + 0.10 * smooth(0.0, 0.3, y)
+    let bottom = 0.12 + 0.07 * streak
+    return min(max(middle * (1 - header) * (1 - footer) + top * header + bottom * footer, 0), 1)
 }
 for gy in 0..<rows {
     for gx in 0..<cols {
@@ -47,7 +56,15 @@ for gy in 0..<rows {
         let frac = level - Double(low)
         let threshold = (bayer[gy % 4][gx % 4] + 0.5) / 16
         let pick = min(ramp.count - 1, low + (frac > threshold ? 1 : 0))
-        block(gx * cell * scale, gy * cell * scale, cell * scale, ramp[pick])
+        // Behind Finder's labels, a strip of two near-equal oranges: dark text
+        // and white text both stay readable on it.
+        let py = Double(gy * cell)
+        let strip = smooth(252, 262, py) * (1 - smooth(300, 310, py))
+        if strip > threshold + 0.001 {
+            block(gx * cell * scale, gy * cell * scale, cell * scale, (gx + gy) % 2 == 0 ? rgb(0xbd4a0b) : rgb(0xc4500d))
+        } else {
+            block(gx * cell * scale, gy * cell * scale, cell * scale, ramp[pick])
+        }
     }
 }
 
@@ -76,6 +93,27 @@ for (r, line) in arrow.enumerated() {
     }
 }
 
+// Contrast, as WCAG reads it, of the words and of Finder's labels.
+func luminance(_ c: (UInt8, UInt8, UInt8)) -> Double {
+    func lin(_ v: UInt8) -> Double { let s = Double(v) / 255; return s <= 0.03928 ? s / 12.92 : pow((s + 0.055) / 1.055, 2.4) }
+    return 0.2126 * lin(c.0) + 0.7152 * lin(c.1) + 0.0722 * lin(c.2)
+}
+func worst(_ x0: Int, _ x1: Int, _ y0: Int, _ y1: Int, ink: Double) -> Double {
+    var low = 99.0
+    for y in stride(from: y0 * scale, to: y1 * scale, by: 2) {
+        for x in stride(from: x0 * scale, to: x1 * scale, by: 2) {
+            let i = (y * pw + x) * 4
+            let l = luminance((pixels[i], pixels[i + 1], pixels[i + 2]))
+            let ratio = (max(l, ink) + 0.05) / (min(l, ink) + 0.05)
+            low = min(low, ratio)
+        }
+    }
+    return low
+}
+let white = 1.0, black = 0.0
+let f = { (v: Double) in String(format: "%.1f", v) }
+FileHandle.standardError.write(Data(("contrast  title: \(f(worst(150, 510, 40, 85, ink: white)))  footer: \(f(worst(120, 540, 335, 385, ink: white)))  labels white: \(f(min(worst(110, 220, 268, 298, ink: white), worst(440, 550, 268, 298, ink: white))))  labels black: \(f(min(worst(110, 220, 268, 298, ink: black), worst(440, 550, 268, 298, ink: black))))\n").utf8))
+
 // The line at the top.
 let image = NSImage(size: NSSize(width: pw, height: ph))
 let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: pw, pixelsHigh: ph, bitsPerSample: 8, samplesPerPixel: 4,
@@ -92,8 +130,8 @@ func text(_ s: String, size: CGFloat, weight: NSFont.Weight, y: CGFloat, color: 
     str.draw(at: NSPoint(x: (CGFloat(pw) - w) / 2, y: CGFloat(ph) - y * CGFloat(scale)))
 }
 text("Drag brOS to Applications", size: 26, weight: .semibold, y: 70, color: NSColor(red: 1, green: 0.95, blue: 0.9, alpha: 1))
-let ink = NSColor(red: 0.16, green: 0.05, blue: 0.01, alpha: 1)
-text("macOS says it can't verify Bros? Open Terminal and paste:", size: 11.5, weight: .medium, y: 352, color: ink, mono: true)
+let ink = NSColor.white
+text("macOS says it can't verify Bros? Open Terminal and paste:", size: 11.5, weight: .medium, y: 354, color: NSColor(white: 1, alpha: 0.82), mono: true)
 text("xattr -dr com.apple.quarantine /Applications/Bros.app", size: 11.5, weight: .bold, y: 372, color: ink, mono: true)
 NSGraphicsContext.restoreGraphicsState()
 rep.size = NSSize(width: width, height: height)           // 144 dpi: Finder draws it at 660 × 400
