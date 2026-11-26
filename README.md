@@ -6,7 +6,13 @@ Bros is a fork of [Search](https://github.com/driceroland/Search) by [Office Com
 
 macOS 14 or later · Mac only · [Download the latest `Bros.dmg`](../../releases/latest)
 
-> The app is ad-hoc signed, not notarised. The first time, right-click Bros in Applications and choose Open.
+> The app is ad-hoc signed, not notarised, so macOS may say it "could not verify Bros.app" the first time. Open Terminal and paste this once, then open Bros normally (the same line is written on the disk image):
+>
+> ```
+> xattr -dr com.apple.quarantine /Applications/Bros.app
+> ```
+>
+> Or: System Settings › Privacy & Security › *Open Anyway*. Updates Bros fetches itself are not blocked.
 
 ---
 
