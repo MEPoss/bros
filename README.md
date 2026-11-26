@@ -52,7 +52,7 @@ The plain arrows belong to the Workspace until you click on a page, which gives 
 
 - **`⌘K` is the Workspace.** In Search it lists open tabs by name; that command is gone here.
 - **Its own name and data.** The app is *Bros* (`app.bros.browser`), with its own folder in `~/Library/Application Support/Bros/`, so it never touches a Search install's tabs, bookmarks or passwords.
-- **No self-update.** Bros takes no updates from Search; get new builds from this repo's Releases.
+- **It updates itself.** Bros looks at this repo's latest release every hour and at launch (Bros › Check for Updates…), downloads the new build, checks it against a signature made with the author's key, and puts it in place for the next launch. Your data is not touched. Search's own update feed is not used.
 - The Workspace is stored in `workspace.json`, and its pictures in `workspace-thumbs/`, in that folder.
 
 ## Building it
@@ -63,7 +63,7 @@ The plain arrows belong to the Workspace until you click on a page, which gives 
 swift test          # the test suite
 ```
 
-Needs the Xcode command line tools and Swift 6. Where the code lives: `Sources/Search/Workspace*.swift` (model, panel, column, keys, thumbnails, ⌘K offers) and `Brand.swift` (the name). Everything else is Search's.
+Needs the Xcode command line tools and Swift 6. To publish a release: `./build.sh && ./bros-release.sh "what is new"`, then the `gh release create` line it prints (the signing key lives in `~/.config/bros/update.key`, outside the repo). Where the code lives: `Sources/Search/Workspace*.swift` (model, panel, column, keys, thumbnails, ⌘K offers) and `Brand.swift` (the name). Everything else is Search's.
 
 ## Credits and licence
 

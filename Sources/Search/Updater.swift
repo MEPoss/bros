@@ -39,6 +39,8 @@ final class Updater: ObservableObject {
         if overridden, let set = ProcessInfo.processInfo.environment["SEARCH_FEED"], let url = URL(string: set) {
             return url
         }
+        // Bros reads its own feed, on its own releases (BrosFeed).
+        if Brand.isFork { return BrosFeed.feed }
         // An Intel Mac has a download of its own from 1.0.5 (build.sh,
         // SEARCH_ARCH=x86_64) and a feed beside it naming only Intel builds,
         // so neither kind of Mac is ever offered the other's.
@@ -157,16 +159,12 @@ final class Updater: ObservableObject {
     /// Search › Check for Updates…: the result is said in the line at the
     /// foot of the window, and an available update is offered in the menu.
     func checkByHand() {
-        if Brand.isFork {
-            say?("\(Brand.name) takes no updates from Search")
-            return
-        }
         switch stage {
         case .ready(let next):
-            say?("Search \(next.version) is ready — relaunch to use it")
+            say?("\(Brand.name) \(next.version) is ready — relaunch to use it")
             return
         case .fetching(let next):
-            say?("Search \(next.version) is downloading…")
+            say?("\(Brand.name) \(next.version) is downloading…")
             return
         default: break
         }
@@ -174,7 +172,7 @@ final class Updater: ObservableObject {
         say?("Checking for updates…")
         check { [weak self] found in
             guard let self else { return }
-            if found == nil { self.say?("Search is up to date"); return }
+            if found == nil { self.say?("\(Brand.name) is up to date"); return }
             // The waiting branch or `take` announces the next state afterward.
         }
     }
@@ -183,9 +181,6 @@ final class Updater: ObservableObject {
     /// names, or nil when this is the latest; what becomes of it after that
     /// is said through the line handed to `checkIfDue`.
     func check(then done: @escaping (Release?) -> Void) {
-        // Bros is its own app: Search's feed has nothing for it, and asks
-        // Office Commun's server for nothing on its behalf.
-        guard !Brand.isFork else { done(nil); return }
         guard !checking else { return }
         checking = true
         Task { [weak self] in
@@ -206,7 +201,7 @@ final class Updater: ObservableObject {
             case .waiting(let known) where known == found: break
             case .none, .offered, .waiting:
                 stage = .waiting(found)
-                say?("Search \(found.version) is out — choose Install Update in the Search menu")
+                say?("\(Brand.name) \(found.version) is out — choose Install Update in the Search menu")
             }
         }
     }
@@ -234,7 +229,7 @@ final class Updater: ObservableObject {
     func openDisk() {
         guard case .offered(let release) = stage, !fetchingDisk else { return }
         fetchingDisk = true
-        say?("Downloading Search \(release.version)…")
+        say?("Downloading \(Brand.name) \(release.version)…")
         Task.detached(priority: .utility) {
             let result: Result<URL, Error>
             do { result = .success(try await Swap.disk(release)) } catch { result = .failure(error) }
@@ -246,7 +241,7 @@ final class Updater: ObservableObject {
                     if Store.testing { Updater.diskVerdict = "verified" } else { NSWorkspace.shared.open(dmg) }
                 case .failure(let error):
                     Updater.diskVerdict = "refused: \(error)"
-                    say?("That download didn't check out — get Search from searchbrowser.app")
+                    say?(Brand.isFork ? "That download didn't check out — get Bros from its GitHub releases" : "That download didn't check out — get Search from searchbrowser.app")
                 }
             }
         }
@@ -269,7 +264,7 @@ final class Updater: ObservableObject {
         case .none, .offered, .waiting: break
         }
         stage = .fetching(release)
-        say?("Search \(release.version) is downloading…")
+        say?("\(Brand.name) \(release.version) is downloading…")
         Task.detached(priority: .utility) {
             let worked: Bool
             do {
@@ -286,8 +281,8 @@ final class Updater: ObservableObject {
         guard case .fetching(let fetching) = stage, fetching == release else { return }
         stage = worked ? .ready(release) : .offered(release)
         say?(worked
-            ? "Search \(release.version) is ready — it's there the next time you open it"
-            : "Search \(release.version) is out — choose Download Update in the Search menu")
+            ? "\(Brand.name) \(release.version) is ready — it's there the next time you open it"
+                    : "\(Brand.name) \(release.version) is out — choose Download Update in the Search menu")
     }
 
     /// A test run's stage, set as told (the bench's `update stage`, and the
@@ -326,6 +321,10 @@ final class Updater: ObservableObject {
     }
 
     private static func fetch() async -> Release? {
+        if Brand.isFork {
+            guard let data = await get(feed, limit: 1 << 20) else { return nil }
+            return BrosFeed.release(from: data)
+        }
         // The feed as Office Commun signed it: appcast.json.zip, next to the
         // plain one older builds read, holding the same file with its code
         // signature (build.sh). Only what comes out of it, checked, is read:
@@ -432,7 +431,7 @@ final class Updater: ObservableObject {
 /// The part that touches the disk, off the main thread. Every step checks
 /// before anything changes, and the only two things ever removed are the
 /// scratch folder it made and the `.old` bundle it set aside.
-private enum Swap {
+enum Swap {
     enum Refused: Error {
         case unsignedHere, readOnly, download, hash, archive, plist, wrongApp, notNewer, unsigned, wrongTeam, move
     }
@@ -451,7 +450,10 @@ private enum Swap {
         // No Team ID on this build means it was signed ad hoc — a development
         // build. Nothing is ever swapped in under an app that could not be
         // told apart from anything else.
-        guard let team = teamID(of: target) else { throw Refused.unsignedHere }
+        // Bros has no team to check: its releases are held to the feed's
+        // signature instead, which covers the hash of the ZIP (BrosFeed).
+        let team = teamID(of: target)
+        guard team != nil || Brand.isFork else { throw Refused.unsignedHere }
         // The folder the app is in has to take a rename, or nothing here can
         // be done: /Applications owned by another account, a disk image.
         guard files.isWritableFile(atPath: target.deletingLastPathComponent().path) else {
@@ -476,7 +478,7 @@ private enum Swap {
         guard let fresh = try files.contentsOfDirectory(at: unpacked, includingPropertiesForKeys: nil)
             .first(where: { $0.pathExtension == "app" })
         else { throw Refused.archive }
-        try verify(fresh, team: team)
+        if Brand.isFork { try verifyFork(fresh) } else { try verify(fresh, team: team ?? "") }
         try swap(fresh)
     }
 
@@ -550,6 +552,23 @@ private enum Swap {
         guard teamID(of: bundle) == team else { throw Refused.wrongTeam }
     }
 
+    /// A Bros bundle is trusted because the signed feed named its ZIP by hash:
+    /// it still has to be this app, newer, and a bundle whose own seal holds.
+    private static func verifyFork(_ bundle: URL) throws {
+        let plist = bundle.appendingPathComponent("Contents/Info.plist")
+        guard let data = try? Data(contentsOf: plist),
+              let info = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+        else { throw Refused.plist }
+        guard info["CFBundleIdentifier"] as? String == Bundle.main.bundleIdentifier else { throw Refused.wrongApp }
+        guard Int(info["CFBundleVersion"] as? String ?? "") ?? 0 > Updater.build else { throw Refused.notNewer }
+        var code: SecStaticCode?
+        guard SecStaticCodeCreateWithPath(bundle as CFURL, [], &code) == errSecSuccess, let code else {
+            throw Refused.unsigned
+        }
+        let strict = SecCSFlags(rawValue: kSecCSStrictValidate | kSecCSCheckAllArchitectures | kSecCSCheckNestedCode)
+        guard SecStaticCodeCheckValidity(code, strict, nil) == errSecSuccess else { throw Refused.unsigned }
+    }
+
     /// The requirement every Developer ID app from this team meets, the one
     /// `codesign -d -r-` prints for a shipped Search: Apple's anchor, the
     /// Developer ID intermediate (…6.2.6) and a Developer ID Application
@@ -560,9 +579,10 @@ private enum Swap {
         guard let expected = release.dmgSha256 else { throw Refused.hash }
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("search-disk-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let dmg = folder.appendingPathComponent("Search \(release.version).dmg")
+        let dmg = folder.appendingPathComponent("\(Brand.name) \(release.version).dmg")
         try await download(release.dmg, to: dmg)
         guard try digest(of: dmg) == expected else { throw Refused.hash }
+        if Brand.isFork { return dmg }
         var code: SecStaticCode?
         guard SecStaticCodeCreateWithPath(dmg as CFURL, [], &code) == errSecSuccess, let code,
               let requirement = developerID(team: Updater.team, identifier: nil),
@@ -600,7 +620,7 @@ private enum Swap {
     /// that is running keeps its files: the kernel follows the rename, so it
     /// goes on running from `.old` — and validating as itself, which is what
     /// its keychain items are checked against — until it quits.
-    private static func swap(_ fresh: URL) throws {
+    static func swap(_ fresh: URL) throws {
         let files = FileManager.default
         sweep()
         guard !files.fileExists(atPath: aside.path) else { throw Refused.move }
