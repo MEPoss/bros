@@ -107,8 +107,12 @@ enum SettingsIndex {
     ]
 
     static func group(_ id: String) -> SettingsGroup? { groups.first { $0.id == id } }
-    static func groups(of page: SettingsPanel.Page) -> [SettingsGroup] { groups.filter { $0.page == page } }
-    static func items(in group: String) -> [SettingsItem] { items.filter { $0.group == group && !$0.findOnly } }
+    /// Bros has no mailing list or iPhone beta: those fields write to
+    /// Office Commun's service, which is not Bros's to ask for.
+    private static func offered(group id: String) -> Bool { !(Brand.isFork && id == "news") }
+
+    static func groups(of page: SettingsPanel.Page) -> [SettingsGroup] { groups.filter { $0.page == page && offered(group: $0.id) } }
+    static func items(in group: String) -> [SettingsItem] { items.filter { $0.group == group && !$0.findOnly && offered(group: $0.group) } }
 
     // MARK: - rows
 
@@ -800,6 +804,7 @@ enum SettingsIndex {
         guard !words.isEmpty else { return [] }
         let order = SettingsPanel.Page.allCases
         return items
+            .filter { offered(group: $0.group) }
             .filter { item in
                 let group = SettingsIndex.group(item.group)
                 let hay = ([item.title, item.detail, item.more ?? "", group?.title ?? "", item.page.title]

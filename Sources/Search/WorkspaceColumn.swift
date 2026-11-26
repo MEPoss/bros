@@ -39,6 +39,10 @@ struct WorkspaceColumn: View {
     @State private var cursor: String?
     /// The row a drag is over, drawn with a ring.
     @State private var targeted: String?
+    /// The links picked together (⇧-click for a range, ⌘-click one by one),
+    /// and the one a range runs from.
+    @State private var marked: Set<WorkItem.ID> = []
+    @State private var anchor: WorkItem.ID?
     /// Which view this is, for the key receiver to know its own answer.
     @State private var token = UUID()
     /// Titles arrive after the tab does, and a tab's page can move on without
@@ -131,6 +135,9 @@ struct WorkspaceColumn: View {
             Spacer(minLength: 4)
             small("folder.badge.plus", "New folder") { ask(parent: nil) }
             if !embedded {
+                small(state.preview ? "eye.fill" : "eye",
+                      state.preview ? "Stop showing pages while you move down the list"
+                                    : "Show each page beside the list as you move down it") { state.preview.toggle() }
                 small("sidebar.left", "Back to the tabs") { state.on = false }
             }
         }
@@ -262,6 +269,7 @@ struct WorkspaceColumn: View {
 
     /// Picks a section: its links show in the area to the right.
     private func pick(_ place: WorkspacePlace, row: String) {
+        marked = []
         cursor = row
         guard nav.place != place else { return browser.showWorkspacePage() }
         nav.place = place
@@ -361,21 +369,92 @@ struct WorkspaceColumn: View {
         .padding(.horizontal, 6)
         .padding(.leading, CGFloat(depth) * 12 + 10)
         .opacity(live ? 1 : 0.6)
-        .background(picked ? cursorFill : (tools.isFront(item) ? Palette.wash : Color.clear))
+        .background(marked.contains(item.id) ? Color.accentColor.opacity(0.32)
+                    : picked ? cursorFill : (tools.isFront(item) ? Palette.wash : Color.clear))
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(Color.accentColor, lineWidth: 2)
+                .opacity(targeted == id ? 1 : 0)
+        )
         .contentShape(Rectangle())
-        .onTapGesture {
-            cursor = id
-            nav.go(.sections)
-            tools.open(item)
+        .onTapGesture { click(item, id: id) }
+        .draggable(WorkDrag(items: carried(with: item)))
+        .dropDestination(for: WorkDrag.self) { drags, _ in
+            drop(drags, onto: item.folder)
+        } isTargeted: { on in
+            if on { targeted = id } else if targeted == id { targeted = nil }
         }
-        .draggable(WorkDrag(items: [item.id]))
         .contextMenu {
-            WorkItemMenu(tools: tools, item: item, ids: [item.id]) { parent, moving in
+            let ids = carried(with: item)
+            WorkItemMenu(tools: tools, item: item, ids: ids, ask: { parent, moving in
                 ask(parent: parent, moving: moving)
-            }
+            }, removed: { marked = [] })
         }
         .help(item.url)
+    }
+
+    // MARK: picking links together
+
+    /// The links of the rows shown, top to bottom.
+    private var linkOrder: [WorkItem.ID] {
+        rows.compactMap { row in
+            if case .link(let item, _) = row.kind { return item.id }
+            return nil
+        }
+    }
+
+    /// What a drag or a menu on `item` takes: the whole pick when the item
+    /// is in it, else the item alone.
+    private func carried(with item: WorkItem) -> [WorkItem.ID] {
+        guard marked.contains(item.id), marked.count > 1 else { return [item.id] }
+        return linkOrder.filter { marked.contains($0) }
+    }
+
+    /// A click on a link: ⇧ picks the range from the last one clicked, ⌘
+    /// adds or takes away one; a plain click opens it and starts over.
+    private func click(_ item: WorkItem, id: String) {
+        let flags = NSEvent.modifierFlags
+        cursor = id
+        nav.go(.sections)
+        if flags.contains(.shift) {
+            let order = linkOrder
+            if let from = anchor.flatMap({ order.firstIndex(of: $0) }) ?? order.firstIndex(of: item.id),
+               let to = order.firstIndex(of: item.id) {
+                marked = Set(order[min(from, to)...max(from, to)])
+            }
+            if anchor == nil { anchor = item.id }
+        } else if flags.contains(.command) {
+            if marked.contains(item.id) { marked.remove(item.id) } else { marked.insert(item.id) }
+            anchor = item.id
+        } else {
+            marked = []
+            anchor = item.id
+            keep(item)
+            tools.open(item)
+        }
+    }
+
+    /// An item opened on purpose is no longer the preview's to replace.
+    private func keep(_ item: WorkItem) {
+        if let live = tools.tab(for: item), live === state.previewTab { state.previewTab = nil }
+    }
+
+    /// The page shown beside the list while the arrows walk it: a tab that
+    /// is already open is brought forward; any other page goes in the one
+    /// preview tab, which the next page replaces.
+    private func showPreview(of item: WorkItem) {
+        if let live = tools.tab(for: item) {
+            browser.select(live)
+            return
+        }
+        guard let url = URL(string: item.url) else { return }
+        if let tab = state.previewTab, browser.tabs.contains(where: { $0 === tab }) {
+            tab.go(to: url)
+            browser.select(tab)
+        } else {
+            state.previewTab = browser.open(url, foreground: true)
+        }
     }
 
     // MARK: the keys
@@ -405,6 +484,7 @@ struct WorkspaceColumn: View {
                 pick(section.place, row: id)
                 nav.go(.links)
             case .link(let item, _):
+                keep(item)
                 tools.open(item)
             }
             return true
@@ -413,9 +493,14 @@ struct WorkspaceColumn: View {
         if let place = move.toggle { state.toggle(place) }
         if let next = move.cursor {
             cursor = next
-            if let row = rows.first(where: { $0.id == next }), case .section(let section) = row.kind,
-               section.place != nav.place {
-                pick(section.place, row: next)
+            if let row = rows.first(where: { $0.id == next }) {
+                switch row.kind {
+                case .section(let section):
+                    if section.place != nav.place { pick(section.place, row: next) }
+                case .link(let item, _):
+                    marked = []
+                    if state.preview && !embedded { showPreview(of: item) }
+                }
             }
         }
         return true
@@ -434,6 +519,7 @@ struct WorkspaceColumn: View {
         folderName = ""
         guard let made = space.addFolder(name.isEmpty ? "New Folder" : name, in: request.parent) else { return }
         for id in request.moving { space.move(id, to: made.id) }
+        marked = []
         if let parent = request.parent { state.open.insert(.folder(parent)) }
         pick(.folder(made.id), row: WorkspaceTree.rowID(.folder(made.id)))
     }
@@ -441,6 +527,7 @@ struct WorkspaceColumn: View {
     /// Links or a folder dropped on a folder, or on the Inbox: moved there.
     private func drop(_ drags: [WorkDrag], onto folder: UUID?) -> Bool {
         var moved = false
+        defer { if moved { marked = [] } }
         for drag in drags {
             for id in drag.items { space.move(id, to: folder); moved = true }
             if let dragged = drag.folder { space.moveFolder(dragged, to: folder); moved = true }

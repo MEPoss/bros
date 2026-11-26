@@ -14,6 +14,15 @@ final class WorkspaceColumnState: ObservableObject {
     @Published var on: Bool {
         didSet { Store.settings.set(on, forKey: "workspace.column") }
     }
+    /// Whether moving onto a link with the arrow keys shows its page in the
+    /// window, in a tab used for looking, so that the list can be walked
+    /// with the page beside it.
+    @Published var preview: Bool = Store.settings.bool(forKey: "workspace.preview") {
+        didSet { Store.settings.set(preview, forKey: "workspace.preview") }
+    }
+    /// The one tab the preview shows its pages in.
+    var previewTab: Tab?
+
     /// The rows of the tree that are open to their links: a view, or a
     /// folder.
     @Published var open: Set<WorkspacePlace> = []

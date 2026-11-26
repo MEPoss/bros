@@ -295,7 +295,7 @@ struct SideBar: View {
                 // coming in as this one goes, with nothing between them. Or,
                 // when asked for, the Workspace in their place.
                 if workspaceColumn.on && !icons {
-                    WorkspaceColumn(browser: browser, state: workspaceColumn, nav: WorkspaceNav.shared, space: Workspace.shared)
+                    WorkspaceColumn(browser: browser, state: workspaceColumn, nav: WorkspaceNav.shared, space: browser.workspace)
                 } else {
                     pages
                 }

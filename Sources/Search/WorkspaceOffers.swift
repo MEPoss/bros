@@ -4,12 +4,15 @@ import Foundation
 // finds the pages open, and a key keeps the page in front in the Inbox.
 
 extension Browser {
+    /// The Workspace of this window's profile: each profile has its own.
+    var workspace: Workspace { Workspace.of(profileID) }
+
     /// What ⌘K adds under the open pages: links kept in the Workspace that
     /// the words match, not the ones already offered as an open page.
     func keptPages(matching typed: String, besides open: [Suggestion]) -> [Suggestion] {
         guard !typed.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
         let taken = Set(open.map { History.identity(for: $0.url) })
-        let space = Workspace.shared
+        let space = workspace
         var found: [Suggestion] = []
         for item in space.search(typed) where item.isWorthKeeping {
             guard found.count < 4, let url = URL(string: item.url),
@@ -27,7 +30,7 @@ extension Browser {
             announce("Nothing to keep here")
             return
         }
-        let space = Workspace.shared
+        let space = workspace
         if let held = space.item(for: address), held.kept {
             announce("Already kept in \(space.path(of: held.folder))")
         } else if let held = space.keep(url: address, title: tab.title) {
@@ -62,7 +65,7 @@ extension Browser {
     /// first, then each folder's, each tab once. A page open in two tabs
     /// stands for both, one after the other, so that none is out of reach.
     func workspaceTabs() -> [Tab] {
-        let space = Workspace.shared
+        let space = workspace
         let tools = WorkspaceTools(browser: self, space: space)
         let open = tools.openTabs
         var seen = Set<Tab.ID>()
@@ -98,7 +101,7 @@ extension Browser {
     /// round the ends, its links shown in the area to the right.
     func stepSection(_ direction: Int) {
         let nav = WorkspaceNav.shared
-        let list = WorkspaceTree.sections(Workspace.shared, open: nil)
+        let list = WorkspaceTree.sections(workspace, open: nil)
         guard !list.isEmpty else { return }
         let at = list.firstIndex { $0.place == nav.place } ?? (direction > 0 ? -1 : 0)
         nav.place = list[((at + direction) % list.count + list.count) % list.count].place
@@ -107,6 +110,6 @@ extension Browser {
 
     /// Whether the page in front was kept on purpose, for the menu to say so.
     var pageKeptInWorkspace: Bool {
-        active?.pageAddress.flatMap { Workspace.shared.item(for: $0.absoluteString)?.kept } ?? false
+        active?.pageAddress.flatMap { workspace.item(for: $0.absoluteString)?.kept } ?? false
     }
 }

@@ -543,3 +543,30 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(back.items.first?.folder, work.id)
     }
 }
+
+@MainActor
+final class WorkspacePerProfileTests: XCTestCase {
+    func testEachProfileKeepsItsOwnWorkspace() {
+        let other = UUID()
+        defer { Workspace.forget(profile: other) }
+        let mine = Workspace.of(other)
+        XCTAssertTrue(mine !== Workspace.shared)
+        XCTAssertTrue(Workspace.of(other) === mine)
+        let item = mine.add(url: "https://profile-test.example/page", title: "Page")!
+        XCTAssertNotNil(mine.item(for: item.url))
+        XCTAssertNil(Workspace.shared.item(for: item.url))
+        XCTAssertEqual(Workspace.fileName(of: Profile.personalID), "workspace.json")
+        XCTAssertEqual(Workspace.fileName(of: other), "workspace-\(other.uuidString).json")
+    }
+}
+
+final class WorkspacePictureTests: XCTestCase {
+    func testThePagesOwnPictureIsFoundAndMadeAbsolute() {
+        let base = URL(string: "https://site.example/a/b")!
+        let og = #"<html><head><meta property="og:image" content="/img/cover.png?x=1&amp;y=2"></head></html>"#
+        XCTAssertEqual(WorkspaceThumbs.declaredPicture(in: og, base: base)?.absoluteString, "https://site.example/img/cover.png?x=1&y=2")
+        let tw = #"<META NAME='twitter:image' CONTENT='https://cdn.example/t.jpg'>"#
+        XCTAssertEqual(WorkspaceThumbs.declaredPicture(in: tw, base: base)?.absoluteString, "https://cdn.example/t.jpg")
+        XCTAssertNil(WorkspaceThumbs.declaredPicture(in: "<meta name=\"description\" content=\"x\">", base: base))
+    }
+}

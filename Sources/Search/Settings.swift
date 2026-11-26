@@ -395,9 +395,9 @@ struct SettingsPanel: View {
         let relabel: (String) -> String = item.id == "spaces.commandNumbers" ? { $0 } : shortcuts.relabel
         return SettingRow(
             icon: item.icon,
-            title: relabel(title(of: item)),
-            detail: relabel(counts ? detail(of: item) : SettingsIndex.needs(item)),
-            more: counts ? item.more.map(relabel) : nil,
+            title: relabel(branded(title(of: item), item)),
+            detail: relabel(branded(counts ? detail(of: item) : SettingsIndex.needs(item), item)),
+            more: counts ? item.more.map { relabel(branded($0, item)) } : nil,
             wide: item.kind == .wide,
             lit: lit == item.id
         ) {
@@ -464,8 +464,15 @@ struct SettingsPanel: View {
 
     // MARK: - words that change
 
+    /// Bros names itself in the About page's rows, which say "Search".
+    private func branded(_ text: String, _ item: SettingsItem) -> String {
+        guard Brand.isFork, ["updates", "developer"].contains(item.group) else { return text }
+        return text.replacingOccurrences(of: "Search", with: Brand.name)
+    }
+
     private func title(of item: SettingsItem) -> String {
         switch item.id {
+        case "about.feedback" where Brand.isFork: return "Found something wrong?"
         case "updates.version": return versionTitle
         // ⌃ while it picks the tabs (Settings › Spaces & Pins).
         case "tabs.shortcuts" where prefs.usesSpaces && prefs.spacesOnCommand: return "Show tab numbers while ⌃ is held"
@@ -477,6 +484,7 @@ struct SettingsPanel: View {
         switch item.id {
         case "general.default":
             return isDefault ? "Search is the default browser on this Mac" : item.detail
+        case "about.feedback" where Brand.isFork: return "Opens the issues page on GitHub"
         case "mail.default":
             if mailDefault { return "Email links from other apps open here" }
             return mailHandler.map { "Email links from other apps go to \($0) now" } ?? item.detail
@@ -922,7 +930,14 @@ struct SettingsPanel: View {
         case "updates.version": versionControl
         case "updates.auto": Switch(on: $prefs.installsUpdates)
         case "updates.notice": Switch(on: $prefs.showsUpdateReady)
-        case "about.feedback": Pill("Send Feedback") { Links.writeFeedback() }
+        case "about.feedback":
+            Pill(Brand.isFork ? "Open Issues" : "Send Feedback") {
+                if Brand.isFork, let url = URL(string: "https://github.com/MEPoss/bros/issues") {
+                    _ = browser.open(url, foreground: true)
+                } else {
+                    Links.writeFeedback()
+                }
+            }
         case "about.notes": Pill("What's New…") { browser.lead(to: InternalPage(.notes)) }
         case "bench": Switch(on: $prefs.bench)
         case "agents": Switch(on: $prefs.agents)
@@ -1191,10 +1206,12 @@ struct SettingsPanel: View {
                 .aspectRatio(Logomark.canvas.width / Logomark.canvas.height, contentMode: .fit)
                 .frame(height: 34)
             VStack(alignment: .leading, spacing: 3) {
-                Text("Search")
+                Text(verbatim: Brand.name)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Palette.ink)
-                Text("by Office Commun · version \(Updater.version)")
+                Text(verbatim: Brand.isFork
+                     ? "A fork of Search by Office Commun · version \(Updater.version)"
+                     : "by Office Commun · version \(Updater.version)")
                     .font(.system(size: 12))
                     .foregroundStyle(Palette.muted)
             }
@@ -1206,9 +1223,9 @@ struct SettingsPanel: View {
     private var versionTitle: String {
         switch updater.stage {
         case .none: return "Updates"
-        case .fetching(let next): return "Search \(next.version) is downloading…"
-        case .ready(let next): return "Search \(next.version) is ready"
-        case .offered(let next), .waiting(let next): return "Search \(next.version) is out"
+        case .fetching(let next): return "\(Brand.name) \(next.version) is downloading…"
+        case .ready(let next): return "\(Brand.name) \(next.version) is ready"
+        case .offered(let next), .waiting(let next): return "\(Brand.name) \(next.version) is out"
         }
     }
 
@@ -1220,7 +1237,7 @@ struct SettingsPanel: View {
         case .fetching(let next):
             return next.notes ?? "Quietly, in the background. Nothing you have set is touched"
         case .ready(let next):
-            return next.notes ?? "It's there the next time you open Search"
+            return next.notes ?? "It's there the next time you open \(Brand.name)"
         case .offered(let next):
             return next.notes ?? "Open the disk image, the same as the first time"
         case .waiting(let next):

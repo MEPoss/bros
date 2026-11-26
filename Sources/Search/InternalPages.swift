@@ -176,7 +176,7 @@ struct InternalPageView: View {
         case .archive:
             ArchivePanel(browser: browser, archive: browser.archive)
         case .workspace:
-            WorkspacePanel(browser: browser, space: Workspace.shared, thumbs: WorkspaceThumbs.shared,
+            WorkspacePanel(browser: browser, space: browser.workspace, thumbs: WorkspaceThumbs.shared,
                            nav: WorkspaceNav.shared, column: WorkspaceColumnState.shared)
         case .importing:
             ImportPanel(browser: browser)

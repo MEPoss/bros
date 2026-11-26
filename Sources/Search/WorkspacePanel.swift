@@ -182,6 +182,10 @@ struct WorkspacePanel: View {
             thumbs.capture(live, for: item.id)
             started += 1
         }
+        // The rest, closed pages too, get the picture the page declares.
+        for item in shown.prefix(60) where thumbs.image(for: item.id) == nil {
+            thumbs.fetchPreview(for: item)
+        }
     }
 
     // MARK: folders
@@ -445,8 +449,8 @@ struct WorkspacePanel: View {
         GeometryReader { geo in
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: pictures ? 172 : 104), spacing: 6, alignment: .top)],
-                              spacing: 6) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: pictures ? 172 : 104), spacing: pictures ? 24 : 22, alignment: .top)],
+                              spacing: pictures ? 26 : 22) {
                         ForEach(folders) { folder in
                             tile(symbol: folder.tileGlyph, letter: nil, picture: nil, wide: pictures, status: nil,
                                  label: folder.name, picked: targetedFolder == folder.id,

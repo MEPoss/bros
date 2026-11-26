@@ -174,8 +174,32 @@ final class Workspace {
     /// Where it is kept; nil keeps nothing, for a test.
     private let file: URL?
 
-    /// The one list, shared by every window, as Search's other lists are.
-    static let shared = Workspace()
+    /// Personal's list, which is the one every window had before profiles
+    /// had lists of their own (and what a test uses).
+    static let shared = Workspace.of(Profile.personalID)
+
+    private static var made: [UUID: Workspace] = [:]
+
+    /// Each profile keeps its own Workspace, in its own file: Personal's in
+    /// workspace.json as ever, the others in workspace-<id>.json.
+    static func fileName(of profile: UUID) -> String {
+        profile == Profile.personalID ? "workspace.json" : "workspace-\(profile.uuidString).json"
+    }
+
+    static func of(_ profile: UUID) -> Workspace {
+        if let held = made[profile] { return held }
+        let space = Workspace(file: fileName(of: profile))
+        made[profile] = space
+        return space
+    }
+
+    /// A profile deleted: its Workspace and its file go with it.
+    static func forget(profile: UUID) {
+        made.removeValue(forKey: profile)?.retired = true
+        Disk.remove(Store.file(fileName(of: profile)))
+    }
+
+    private var retired = false
 
     init(file name: String? = "workspace.json") {
         file = name.map { Store.file($0) }
@@ -462,7 +486,7 @@ final class Workspace {
     }
 
     private func save() {
-        guard let file else { return }
+        guard let file, !retired else { return }
         let snapshot = WorkspaceFile(folders: folders, items: items)
         Disk.write(file) { try? JSONEncoder.workspace.encode(snapshot) }
     }
