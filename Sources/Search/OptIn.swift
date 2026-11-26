@@ -75,7 +75,7 @@ enum OptIn {
     /// Whether the card and the welcome offer the field: until an email has
     /// been given once. Closing the card without one changes nothing, so
     /// the next version's card offers it again.
-    static func offered(_ store: UserDefaults = Store.settings) -> Bool { !joined(store) }
+    static func offered(_ store: UserDefaults = Store.settings) -> Bool { !Brand.isFork && !joined(store) }
 
     /// After a press the site said yes to: the booleans, and nothing else.
     static func remember(_ list: List, in store: UserDefaults = Store.settings) {

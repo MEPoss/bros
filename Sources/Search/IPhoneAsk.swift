@@ -25,7 +25,7 @@ import SwiftUI
 
 enum IPhoneAsk {
     /// The one switch for every place.
-    static let on = true
+    static var on: Bool { !Brand.isFork }
 
     /// "Not now", pressed in any place: never offered again anywhere.
     nonisolated static let dismissedKey = "iphoneask.dismissed"

@@ -251,7 +251,9 @@ enum WhatsNew {
     }
 
     /// This version's card, when it has one.
-    static var current: Release? { releases.first { $0.version == Updater.version } }
+    /// Bros has no card of its own: Search's cards are for Search's versions,
+    /// which share Bros's numbers by chance.
+    static var current: Release? { Brand.isFork ? nil : releases.first { $0.version == Updater.version } }
 
     /// Version strings in order: 1.0.10 after 1.0.9.
     static func older(_ one: String, than other: String) -> Bool {
@@ -302,8 +304,44 @@ enum WhatsNew {
         let fixed: [String]
     }
 
-    /// Newest first.
-    static let notes: [Notes] = [
+    /// Newest first: Bros's own notes, or Search's.
+    static var notes: [Notes] { Brand.isFork ? brosNotes : searchNotes }
+
+    static let brosNotes: [Notes] = [
+        Notes(version: "1.0.5", date: "26 November 2026",
+              headline: "A friendlier disk image.",
+              new: ["The disk image has a read-me with the command to open Bros the first time, which can be copied."],
+              better: [], fixed: []),
+        Notes(version: "1.0.4", date: "26 November 2026",
+              headline: "A disk image made for Bros.",
+              new: ["A dithered orange disk image with a pixel arrow from Bros to Applications."],
+              better: ["The README says how to open Bros the first time."],
+              fixed: []),
+        Notes(version: "1.0.3", date: "26 November 2026",
+              headline: "A Workspace for each profile, and more ways to sort it.",
+              new: ["Each profile has its own Workspace.",
+                    "Pick several links in the sidebar with ⇧ and ⌘ clicks, and drag them onto a folder, or onto another link, to file them.",
+                    "The eye button in the Workspace sidebar shows each page beside the list as you move down it with the arrows.",
+                    "Pictures of links that are not open are fetched from their pages."],
+              better: ["More room between the files in the icon and picture views, to pick them with the mouse.",
+                       "Settings › About shows Bros, with no email list or iPhone beta, and Open Issues instead of Send Feedback."],
+              fixed: []),
+        Notes(version: "1.0.2", date: "26 November 2026",
+              headline: "Bros updates itself.",
+              new: ["Bros looks for a new version every hour and at launch (Bros › Check for Updates…), checks its signature and puts it in place."],
+              better: [], fixed: []),
+        Notes(version: "1.0.1", date: "26 November 2026",
+              headline: "Icons and search in the Workspace.",
+              new: ["Choose an icon for a folder.", "Search the folders and links of the Workspace.",
+                    "Delete folders, and links, with ⌘⌫ after a confirmation."],
+              better: [], fixed: []),
+        Notes(version: "1.0.0", date: "26 November 2026",
+              headline: "The first Bros.",
+              new: ["The Workspace, opened with ⌘K: your open tabs as files in folders, with statuses, priorities, due dates and three views."],
+              better: [], fixed: []),
+    ]
+
+    static let searchNotes: [Notes] = [
         Notes(
             version: "1.0.20", date: "24 November 2026",
             headline: "Your fixes, from the Dock to extension popups.",
@@ -869,7 +907,7 @@ struct WhatsNewCard: View {
     private var showsOptIn: Bool { (optInForced ?? offering ?? OptIn.offered()) && (optInForced != nil || reach.online) }
 
     var body: some View {
-        Plate("New in Search \(release.version)", width: 460, close: close) {
+        Plate("New in \(Brand.name) \(release.version)", width: 460, close: close) {
             VStack(alignment: .leading, spacing: 14) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
@@ -951,7 +989,7 @@ struct ReleaseNotesPanel: View {
     private func version(_ note: WhatsNew.Notes) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("Search \(note.version)")
+                Text("\(Brand.name) \(note.version)")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Palette.ink)
                 if !note.date.isEmpty {
