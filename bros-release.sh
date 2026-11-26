@@ -35,6 +35,19 @@ ditto -c -k --keepParent "$APP" build/Bros.zip
 STAGE="$(mktemp -d)"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
+cat > "$STAGE/Blocked? Read me.txt" <<'TXT'
+If macOS says it "could not verify Bros.app", Bros is not broken: it is signed
+by its author, not notarised by Apple.
+
+1. Drag Bros.app to Applications.
+2. Open Terminal and paste this line (select it here, copy, paste, Return):
+
+xattr -dr com.apple.quarantine /Applications/Bros.app
+
+3. Open Bros as usual. You do this once; Bros updates itself after that.
+
+Or: System Settings > Privacy & Security > "Open Anyway".
+TXT
 mkdir "$STAGE/.background"
 swift tools/dmg-background.swift "$STAGE/.background/background.png" >/dev/null
 RW="$(mktemp -u).dmg"
@@ -54,11 +67,12 @@ tell application "Finder"
     set the bounds of container window to {200, 120, 860, 548}
     set opts to the icon view options of container window
     set arrangement of opts to not arranged
-    set icon size of opts to 112
+    set icon size of opts to 96
     set text size of opts to 13
     set background picture of opts to file ".background:background.png"
-    set position of item "Bros.app" of container window to {165, 215}
-    set position of item "Applications" of container window to {495, 215}
+    set position of item "Bros.app" of container window to {165, 165}
+    set position of item "Applications" of container window to {495, 165}
+    set position of item "Blocked? Read me.txt" of container window to {330, 322}
     update without registering applications
     delay 2
     close

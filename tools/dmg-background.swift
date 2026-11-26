@@ -6,7 +6,7 @@ import AppKit
 //   swift tools/dmg-background.swift build/dmg-background.png
 //
 // 660 × 400 points, drawn at 2x. Keep these in step with bros-release.sh:
-// app icon at (165, 215), Applications at (495, 215).
+// app icon at (165, 165), Applications at (495, 165), the read-me at (330, 322).
 
 let width = 660, height = 400, scale = 2
 let cell = 2                       // one dither dot, in points
@@ -42,8 +42,8 @@ func field(_ gx: Int, _ gy: Int) -> Double {
     // Dark above and below, where white words stand; an even orange between,
     // where Finder's own labels sit (black or white by the Mac's look): both
     // keep their contrast there.
-    let header = 1 - smooth(0.22, 0.40, y)
-    let footer = smooth(0.74, 0.84, y)
+    let header = 1 - smooth(0.16, 0.30, y)
+    let footer = 0.0
     let middle = 0.60 + 0.045 * streak + 0.03 * exp(-pow((x - 0.5) * 2.2, 2) - pow((y - 0.55) * 3, 2))
     let top = 0.10 + 0.07 * streak + 0.10 * smooth(0.0, 0.3, y)
     let bottom = 0.12 + 0.07 * streak
@@ -59,7 +59,7 @@ for gy in 0..<rows {
         // Behind Finder's labels, a strip of two near-equal oranges: dark text
         // and white text both stay readable on it.
         let py = Double(gy * cell)
-        let strip = smooth(252, 262, py) * (1 - smooth(300, 310, py))
+        let strip = smooth(205, 214, py)
         if strip > threshold + 0.001 {
             block(gx * cell * scale, gy * cell * scale, cell * scale, (gx + gy) % 2 == 0 ? rgb(0xbd4a0b) : rgb(0xc4500d))
         } else {
@@ -81,7 +81,7 @@ let arrow = [
     "......X.....",
 ]
 let unit = 8 * scale
-let ax = (width * scale - 12 * unit) / 2, ay = 215 * scale - (9 * unit) / 2
+let ax = (width * scale - 12 * unit) / 2, ay = 165 * scale - (9 * unit) / 2
 for (r, line) in arrow.enumerated() {
     for (c, ch) in line.enumerated() where ch == "X" {
         block(ax + c * unit + unit / 2, ay + r * unit + unit / 2, unit, rgb(0x2a0d03))   // shadow
@@ -111,8 +111,9 @@ func worst(_ x0: Int, _ x1: Int, _ y0: Int, _ y1: Int, ink: Double) -> Double {
     return low
 }
 let white = 1.0, black = 0.0
+let fileLabel = (worst(290, 370, 346, 372, ink: white), worst(290, 370, 346, 372, ink: black))
 let f = { (v: Double) in String(format: "%.1f", v) }
-FileHandle.standardError.write(Data(("contrast  title: \(f(worst(150, 510, 40, 85, ink: white)))  footer: \(f(worst(120, 540, 335, 385, ink: white)))  labels white: \(f(min(worst(110, 220, 268, 298, ink: white), worst(440, 550, 268, 298, ink: white))))  labels black: \(f(min(worst(110, 220, 268, 298, ink: black), worst(440, 550, 268, 298, ink: black))))\n").utf8))
+FileHandle.standardError.write(Data(("contrast  title: \(f(worst(150, 510, 40, 85, ink: white)))  footer: \(f(worst(120, 540, 262, 292, ink: white)))  labels white: \(f(min(worst(110, 220, 216, 248, ink: white), worst(440, 550, 216, 248, ink: white))))  file label white/black: \(f(fileLabel.0))/\(f(fileLabel.1))  labels black: \(f(min(worst(110, 220, 216, 248, ink: black), worst(440, 550, 216, 248, ink: black))))\n").utf8))
 
 // The line at the top.
 let image = NSImage(size: NSSize(width: pw, height: ph))
@@ -131,8 +132,7 @@ func text(_ s: String, size: CGFloat, weight: NSFont.Weight, y: CGFloat, color: 
 }
 text("Drag brOS to Applications", size: 26, weight: .semibold, y: 70, color: NSColor(red: 1, green: 0.95, blue: 0.9, alpha: 1))
 let ink = NSColor.white
-text("macOS says it can't verify Bros? Open Terminal and paste:", size: 11.5, weight: .medium, y: 354, color: NSColor(white: 1, alpha: 0.82), mono: true)
-text("xattr -dr com.apple.quarantine /Applications/Bros.app", size: 11.5, weight: .bold, y: 372, color: ink, mono: true)
+text("macOS says it can't verify Bros? Open the file below and copy the command.", size: 11.5, weight: .semibold, y: 282, color: .white, mono: true)
 NSGraphicsContext.restoreGraphicsState()
 rep.size = NSSize(width: width, height: height)           // 144 dpi: Finder draws it at 660 × 400
 image.addRepresentation(rep)
