@@ -18,6 +18,48 @@ final class WorkspaceTests: XCTestCase {
 
     // MARK: addresses
 
+    func testSearchFindsFoldersByTheirPathToo() {
+        let space = Workspace(file: nil)
+        let work = space.addFolder("Work")!
+        let brief = space.addFolder("Briefs", in: work.id)!
+        _ = space.addFolder("Home")
+        XCTAssertEqual(space.searchFolders("brief").map(\.id), [brief.id])
+        XCTAssertEqual(space.searchFolders("work brief").map(\.id), [brief.id], "the path counts")
+        XCTAssertEqual(space.searchFolders("work").count, 2, "a folder and the one inside it")
+        XCTAssertTrue(space.searchFolders("  ").isEmpty)
+    }
+
+    func testAFolderTakesAnIconFromTheListAndGoesBackToAFolder() {
+        let space = Workspace(file: nil)
+        let folder = space.addFolder("Trips")!
+        XCTAssertEqual(space.folder(folder.id)?.glyph, "folder")
+        XCTAssertEqual(space.folder(folder.id)?.tileGlyph, "folder.fill")
+
+        space.setIcon(folder.id, to: "airplane")
+        XCTAssertEqual(space.folder(folder.id)?.glyph, "airplane")
+        XCTAssertEqual(space.folder(folder.id)?.tileGlyph, "airplane")
+        XCTAssertEqual(WorkspaceTree.sections(space, open: nil).last?.symbol, "airplane", "the tree draws it")
+
+        space.setIcon(folder.id, to: "not-a-symbol")
+        XCTAssertEqual(space.folder(folder.id)?.glyph, "folder", "a name outside the list is the plain folder")
+        space.setIcon(folder.id, to: "star")
+        space.setIcon(folder.id, to: nil)
+        XCTAssertNil(space.folder(folder.id)?.symbol)
+    }
+
+    func testAnIconIsKeptAndAFolderSavedBeforeIconsStillLoads() throws {
+        let made = WorkFolder(name: "Read", symbol: "book")
+        let back = try JSONDecoder().decode(WorkFolder.self, from: JSONEncoder().encode(made))
+        XCTAssertEqual(back.symbol, "book")
+
+        let old = #"{"id":"\#(UUID().uuidString)","name":"Old"}"#.data(using: .utf8)!
+        let folder = try JSONDecoder().decode(WorkFolder.self, from: old)
+        XCTAssertNil(folder.symbol)
+        XCTAssertEqual(folder.glyph, "folder")
+        let edited = WorkFolder(name: "X", symbol: "../etc")
+        XCTAssertEqual(edited.glyph, "folder", "a hand-edited name draws as a folder")
+    }
+
     func testTrackingParametersAndFragmentAreDropped() {
         XCTAssertEqual(
             Workspace.normalized("https://Example.com/a?utm_source=x&id=7&fbclid=z#top"),

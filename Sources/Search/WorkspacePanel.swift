@@ -68,6 +68,8 @@ struct WorkspacePanel: View {
     @State private var folderName = ""
     /// Links Delete asked to take out, until the question is answered.
     @State private var removing: [WorkItem.ID] = []
+    /// A folder ⌘⌫ or its menu asked to delete, until the question is answered.
+    @State private var removingFolder: UUID?
     /// The place a drag is over, drawn with a ring.
     @State private var targeted: WorkspacePlace?
     @State private var targetedFolder: UUID?
@@ -239,7 +241,7 @@ struct WorkspacePanel: View {
     /// The folders at the level on screen, shown beside its links: at the
     /// top, in the Inbox, as the Desktop shows its folders.
     private var subfolders: [WorkFolder] {
-        guard hunt.isEmpty else { return [] }
+        guard hunt.isEmpty else { return space.searchFolders(hunt) }
         switch place {
         case .inbox: return space.children(of: nil)
         case .folder(let id): return space.children(of: id)
@@ -263,6 +265,13 @@ struct WorkspacePanel: View {
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
                 Text(heading).font(.system(size: 18, weight: .medium)).foregroundStyle(Palette.ink).lineLimit(1)
+                    .alert("Delete folder \u{201C}\(removingFolder.flatMap { space.folder($0)?.name } ?? "")\u{201D}?",
+                           isPresented: Binding(get: { removingFolder != nil }, set: { if !$0 { removingFolder = nil } })) {
+                        Button("Delete", role: .destructive) { removeFolderConfirmed() }
+                        Button("Cancel", role: .cancel) { removingFolder = nil }
+                    } message: {
+                        Text("Its links go to the Inbox and its folders move up a level. No link is deleted.")
+                    }
                 Spacer()
                 Picker("View", selection: $mode) {
                     Image(systemName: "photo.on.rectangle").tag(WorkspaceView.snapshots)
@@ -356,12 +365,11 @@ struct WorkspacePanel: View {
         } primaryAction: { ids in
             if let first = ids.first.flatMap({ space.item($0) }) { open(first) }
         }
-        .onDeleteCommand { askToRemove() }
     }
 
     private func folderLine(_ folder: WorkFolder) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: "folder.fill").foregroundStyle(Palette.muted).frame(width: 7)
+            Image(systemName: folder.glyph).foregroundStyle(Palette.muted).frame(width: 16)
             Text(folder.name).font(.system(size: 13)).foregroundStyle(Palette.ink).lineLimit(1)
             Spacer()
             let count = space.count(in: folder.id)
@@ -376,6 +384,11 @@ struct WorkspacePanel: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { place = .folder(folder.id); selection = [] }
         .draggable(WorkDrag(folder: folder.id))
+        .contextMenu {
+                                    FolderIconMenu(space: space, folder: folder)
+                                    Divider()
+                                    Button("Delete Folder…", role: .destructive) { removingFolder = folder.id }
+                                }
         .dropDestination(for: WorkDrag.self) { drags, _ in
             drop(drags, onto: folder.id)
         } isTargeted: { on in
@@ -435,7 +448,7 @@ struct WorkspacePanel: View {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: pictures ? 172 : 104), spacing: 6, alignment: .top)],
                               spacing: 6) {
                         ForEach(folders) { folder in
-                            tile(symbol: "folder.fill", letter: nil, picture: nil, wide: pictures, status: nil,
+                            tile(symbol: folder.tileGlyph, letter: nil, picture: nil, wide: pictures, status: nil,
                                  label: folder.name, picked: targetedFolder == folder.id,
                                  cursor: keyed && gridCursor == folder.id, live: true)
                                 .background(frameReader(folder.id))
@@ -443,6 +456,11 @@ struct WorkspacePanel: View {
                                 .onTapGesture(count: 2) { place = .folder(folder.id); selection = [] }
                                 .onTapGesture { gridCursor = folder.id; selection = []; nav.go(.links) }
                                 .draggable(WorkDrag(folder: folder.id))
+                                .contextMenu {
+                                    FolderIconMenu(space: space, folder: folder)
+                                    Divider()
+                                    Button("Delete Folder…", role: .destructive) { removingFolder = folder.id }
+                                }
                                 .dropDestination(for: WorkDrag.self) { drags, _ in
                                     drop(drags, onto: folder.id)
                                 } isTargeted: { on in
@@ -494,7 +512,6 @@ struct WorkspacePanel: View {
             }
         }
         .onPreferenceChange(TileFrames.self) { frames = $0 }
-        .onDeleteCommand { askToRemove() }
     }
 
     private func frameReader(_ id: UUID) -> some View {
@@ -556,6 +573,10 @@ struct WorkspacePanel: View {
             guard let at else { pick(ids[0]); break }
             if list { pick(ids[max(at - 1, 0)]) } else if let next = nearest(from: ids[at], in: ids, down: false) { pick(next) }
         case .delete:
+            if selection.isEmpty, let id = gridCursor, folders.contains(where: { $0.id == id }) {
+                removingFolder = id
+                return true
+            }
             return askToRemove()
         case .enter:
             guard let id = gridCursor else { return false }
@@ -689,6 +710,14 @@ struct WorkspacePanel: View {
         let open = removing.compactMap { space.item($0) }.filter { space.isLive($0) }.count
         if open == 0 { return "They are taken out of the Workspace." }
         return "They are taken out of the Workspace, and \(open == 1 ? "the page open in a tab is" : "the \(open) pages open in tabs are") closed."
+    }
+
+    private func removeFolderConfirmed() {
+        guard let id = removingFolder else { return }
+        removingFolder = nil
+        if place == .folder(id) { place = .inbox }
+        gridCursor = nil
+        space.removeFolder(id)
     }
 
     private func removeConfirmed() {

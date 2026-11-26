@@ -35,12 +35,14 @@ final class WorkspaceKeysTests: XCTestCase {
         XCTAssertNil(WorkspaceKeys.key(of: event(49, flags: [])), "and so is Space")
     }
 
-    func testDeleteIsTheWorkspacesOnceAndNothingHeldWithIt() {
-        XCTAssertEqual(WorkspaceKeys.key(of: event(51, flags: [])), .delete)
-        XCTAssertEqual(WorkspaceKeys.key(of: event(117, flags: [.function])), .delete, "forward delete too")
-        XCTAssertNil(WorkspaceKeys.key(of: event(51, flags: [], repeating: true)), "once, not repeated")
-        XCTAssertNil(WorkspaceKeys.key(of: event(51, flags: [.shift])), "⇧⌫ clears browsing data")
-        XCTAssertNil(WorkspaceKeys.key(of: event(51, flags: [.command])))
+    func testCommandDeleteIsTheWorkspacesOnceAndBareDeleteIsNot() {
+        XCTAssertEqual(WorkspaceKeys.key(of: event(51, flags: [.command])), .delete)
+        XCTAssertEqual(WorkspaceKeys.key(of: event(117, flags: [.command, .function])), .delete, "forward delete too")
+        XCTAssertNil(WorkspaceKeys.key(of: event(51, flags: [.command], repeating: true)), "once, not repeated")
+        XCTAssertNil(WorkspaceKeys.key(of: event(51, flags: [])), "the bare key is the fields'")
+        XCTAssertNil(WorkspaceKeys.key(of: event(51, flags: [.shift, .command])), "⇧⌘⌫ clears browsing data")
+        XCTAssertNil(WorkspaceKeys.key(of: event(51, flags: [.option, .command])))
+        XCTAssertEqual(WorkspaceKeys.key(of: event(125, flags: [.numericPad, .function])), .down, "the arrows are as they were")
     }
 
     func testCommandKOpensTheWorkspaceAndSearchTabsIsGone() {

@@ -31,6 +31,10 @@ struct WorkspaceColumn: View {
 
     @State private var asking: FolderAsk?
     @State private var folderName = ""
+    /// What is typed in the search field; empty shows the tree.
+    @State private var hunt = ""
+    /// A folder the keys or its menu asked to delete, until it is answered.
+    @State private var deleting: UUID?
     /// The row the arrow keys are on.
     @State private var cursor: String?
     /// The row a drag is over, drawn with a ring.
@@ -64,6 +68,10 @@ struct WorkspaceColumn: View {
         let here = current(in: rows)
         return VStack(alignment: .leading, spacing: 0) {
             header
+            searchField
+            if !hunt.isEmpty {
+                results
+            } else {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 1) {
@@ -79,6 +87,7 @@ struct WorkspaceColumn: View {
                 .onChange(of: cursor) { _, id in
                     if let id { proxy.scrollTo(id) }
                 }
+            }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -127,6 +136,97 @@ struct WorkspaceColumn: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 8)
+        .alert("Delete folder \u{201C}\(deleting.flatMap { space.folder($0)?.name } ?? "")\u{201D}?",
+               isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
+            Button("Delete", role: .destructive) { deleteConfirmed() }
+            Button("Cancel", role: .cancel) { deleting = nil }
+        } message: {
+            Text("Its links go to the Inbox and its folders move up a level. No link is deleted.")
+        }
+    }
+
+    private func deleteConfirmed() {
+        guard let id = deleting else { return }
+        deleting = nil
+        if nav.place == .folder(id) { nav.place = .inbox }
+        cursor = nil
+        space.removeFolder(id)
+    }
+
+    // MARK: search
+
+    private var searchField: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "magnifyingglass").font(.system(size: 11)).foregroundStyle(Palette.muted)
+            TextField("Search", text: $hunt)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .onSubmit { openFirstResult() }
+                .onExitCommand { hunt = "" }
+            if !hunt.isEmpty {
+                Button { hunt = "" } label: {
+                    Image(systemName: "xmark.circle.fill").font(.system(size: 11)).foregroundStyle(Palette.muted)
+                }
+                .buttonStyle(.plain)
+                .help("Clear")
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(Palette.wash)
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .padding(.horizontal, 6)
+        .padding(.bottom, 6)
+    }
+
+    /// The folders and links the words are in, in place of the tree.
+    private var results: some View {
+        let folders = space.searchFolders(hunt)
+        let links = space.search(hunt)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 1) {
+                if folders.isEmpty && links.isEmpty {
+                    Text("Nothing matches.")
+                        .font(.system(size: 13)).foregroundStyle(Palette.muted)
+                        .padding(.horizontal, 10).padding(.vertical, 8)
+                }
+                ForEach(folders) { folder in
+                    HStack(spacing: 6) {
+                        Image(systemName: folder.glyph).frame(width: 16).foregroundStyle(Palette.muted)
+                        Text(space.path(of: folder.id)).lineLimit(1)
+                        Spacer(minLength: 4)
+                    }
+                    .font(.system(size: 13))
+                    .foregroundStyle(Palette.ink)
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 10)
+                    .contentShape(Rectangle())
+                    .onTapGesture { openFolder(folder.id) }
+                }
+                ForEach(links) { item in
+                    linkRow(item, id: "l/search/\(item.id)", depth: 0, picked: false)
+                        .help("\(item.url)\n\(space.path(of: item.folder))")
+                }
+            }
+            .padding(.bottom, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func openFolder(_ id: UUID) {
+        hunt = ""
+        state.open.insert(.folder(id))
+        show(.folder(id))
+        pick(.folder(id), row: WorkspaceTree.rowID(.folder(id)))
+    }
+
+    /// Return in the field: the first folder, or else the first link.
+    private func openFirstResult() {
+        if let folder = space.searchFolders(hunt).first {
+            openFolder(folder.id)
+        } else if let item = space.search(hunt).first {
+            tools.open(item)
+        }
     }
 
     private func small(_ symbol: String, _ help: String, _ act: @escaping () -> Void) -> some View {
@@ -225,10 +325,9 @@ struct WorkspaceColumn: View {
                         Label("New Folder", systemImage: "folder.badge.plus")
                     }
                     Button { ask(parent: folder) } label: { Label("New Subfolder", systemImage: "folder.badge.plus") }
-                    Button("Delete Folder", role: .destructive) {
-                        if nav.place == .folder(folder) { nav.place = .inbox }
-                        space.removeFolder(folder)
-                    }
+                    if let made = space.folder(folder) { FolderIconMenu(space: space, folder: made) }
+                    Divider()
+                    Button("Delete Folder…", role: .destructive) { deleting = folder }
                 }
         } else {
             base
@@ -286,6 +385,7 @@ struct WorkspaceColumn: View {
     /// links on the right; moving onto a link only marks it, and opens
     /// nothing until Return. Gives back whether the key was taken.
     private func handle(_ key: WorkspaceKeys.Key) -> Bool {
+        guard hunt.isEmpty else { return false }
         let rows = self.rows
         let arrow: WorkspaceTree.ColumnKey
         switch key {
@@ -293,7 +393,11 @@ struct WorkspaceColumn: View {
         case .down: arrow = .down
         case .left: arrow = .left
         case .right: arrow = .right
-        case .delete: return false
+        case .delete:
+            guard let id = current(in: rows), let row = rows.first(where: { $0.id == id }),
+                  case .section(let section) = row.kind, let folder = section.folder else { return false }
+            deleting = folder
+            return true
         case .enter:
             guard let id = current(in: rows), let row = rows.first(where: { $0.id == id }) else { return false }
             switch row.kind {

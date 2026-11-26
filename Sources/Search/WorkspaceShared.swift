@@ -107,7 +107,7 @@ enum WorkspaceTree {
         ]
         func walk(_ parent: UUID?, depth: Int) {
             for folder in space.children(of: parent) {
-                out.append(WorkspaceSection(place: .folder(folder.id), title: folder.name, symbol: "folder",
+                out.append(WorkspaceSection(place: .folder(folder.id), title: folder.name, symbol: folder.glyph,
                                             depth: depth, folder: folder.id))
                 if open?.contains(folder.id) ?? true { walk(folder.id, depth: depth + 1) }
             }
@@ -155,7 +155,7 @@ enum WorkspaceTree {
         func walk(_ parent: UUID?, depth: Int) {
             for folder in space.children(of: parent) {
                 let place = WorkspacePlace.folder(folder.id)
-                section(WorkspaceSection(place: place, title: folder.name, symbol: "folder", depth: depth, folder: folder.id))
+                section(WorkspaceSection(place: place, title: folder.name, symbol: folder.glyph, depth: depth, folder: folder.id))
                 if open.contains(place) {
                     walk(folder.id, depth: depth + 1)
                     links(space.items(in: folder.id), under: place, depth: depth + 1)
@@ -327,6 +327,28 @@ struct WorkItemMenu: View {
                 closed.forEach { space.remove($0.id) }
                 removed()
             }
+        }
+    }
+}
+
+/// The folder's Icon submenu, for the menus of a folder wherever it is shown.
+struct FolderIconMenu: View {
+    let space: Workspace
+    let folder: WorkFolder
+
+    var body: some View {
+        Menu {
+            Button { space.setIcon(folder.id, to: nil) } label: {
+                Label("Folder", systemImage: folder.symbol == nil ? "checkmark" : "folder")
+            }
+            Divider()
+            ForEach(WorkFolder.icons, id: \.symbol) { icon in
+                Button { space.setIcon(folder.id, to: icon.symbol) } label: {
+                    Label(icon.name, systemImage: folder.symbol == icon.symbol ? "checkmark" : icon.symbol)
+                }
+            }
+        } label: {
+            Label("Icon", systemImage: folder.glyph)
         }
     }
 }

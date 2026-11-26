@@ -28,11 +28,15 @@ final class WorkspaceKeys {
     func answer(_ zone: WorkspaceNav.Zone) -> ((Key) -> Bool)? { handlers[zone]?.answer }
 
     /// The key an event is, if it is one the Workspace uses: an arrow, with
-    /// nothing held, or Return or Delete, once.
+    /// nothing held, or Return once, or ⌘⌫ once.
     nonisolated static func key(of event: NSEvent) -> Key? {
         // The arrows come with the function and numeric-pad flags set.
         let held = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
             .subtracting([.numericPad, .function, .capsLock])
+        // ⌘⌫ deletes, as in the Finder: the bare key is left to the fields.
+        if held == .command {
+            return (event.keyCode == 51 || event.keyCode == 117) && !event.isARepeat ? .delete : nil
+        }
         guard held.isEmpty else { return nil }
         switch event.keyCode {
         case 126: return .up
@@ -40,7 +44,6 @@ final class WorkspaceKeys {
         case 123: return .left
         case 124: return .right
         case 36, 76: return event.isARepeat ? nil : .enter
-        case 51, 117: return event.isARepeat ? nil : .delete
         default: return nil
         }
     }

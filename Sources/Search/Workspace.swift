@@ -33,11 +33,38 @@ struct WorkFolder: Codable, Identifiable, Equatable {
     var name: String
     /// The folder that holds this one; nil at the top.
     var parent: UUID?
+    /// The name of the SF Symbol picked for it (`WorkFolder.icons`); nil is
+    /// the plain folder.
+    var symbol: String?
 
-    init(id: UUID = UUID(), name: String, parent: UUID? = nil) {
+    init(id: UUID = UUID(), name: String, parent: UUID? = nil, symbol: String? = nil) {
         self.id = id
         self.name = name
         self.parent = parent
+        self.symbol = symbol
+    }
+
+    /// What it is drawn with: the one picked, or a folder.
+    var glyph: String { symbol.flatMap { Self.icon(named: $0) } ?? "folder" }
+    /// The same for a big tile, where the plain folder is the filled one.
+    var tileGlyph: String { symbol.flatMap { Self.icon(named: $0) } ?? "folder.fill" }
+
+    /// The icons to choose from: the symbol's name and what the menu calls it.
+    static let icons: [(symbol: String, name: String)] = [
+        ("briefcase", "Work"), ("house", "Home"), ("star", "Favourites"), ("heart", "Heart"),
+        ("book", "Reading"), ("graduationcap", "Study"), ("lightbulb", "Ideas"), ("flag", "Flag"),
+        ("bookmark", "Saved"), ("tag", "Tag"), ("pin", "Pinned"), ("bolt", "Quick"),
+        ("cart", "Shopping"), ("creditcard", "Money"), ("airplane", "Travel"), ("map", "Places"),
+        ("camera", "Photos"), ("film", "Video"), ("music.note", "Music"), ("gamecontroller", "Games"),
+        ("paintbrush", "Design"), ("hammer", "Build"), ("chevron.left.forwardslash.chevron.right", "Code"),
+        ("chart.bar", "Data"), ("envelope", "Mail"), ("person.2", "People"), ("globe", "Web"),
+        ("leaf", "Nature"), ("cup.and.saucer", "Break"), ("archivebox", "Archive"),
+    ]
+
+    /// A stored name only if it is one of the icons: a file edited by hand
+    /// cannot put anything else on screen.
+    static func icon(named name: String) -> String? {
+        icons.contains { $0.symbol == name } ? name : nil
     }
 }
 
@@ -118,13 +145,14 @@ extension WorkItem {
 }
 
 extension WorkFolder {
-    private enum Keys: String, CodingKey { case id, name, parent }
+    private enum Keys: String, CodingKey { case id, name, parent, symbol }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Keys.self)
         id = try c.decode(UUID.self, forKey: .id)
         name = try c.decode(String.self, forKey: .name)
         parent = try? c.decodeIfPresent(UUID.self, forKey: .parent)
+        symbol = (try? c.decodeIfPresent(String.self, forKey: .symbol)).flatMap { $0 }
     }
 }
 
@@ -305,6 +333,15 @@ final class Workspace {
         return made
     }
 
+    /// Gives a folder an icon from `WorkFolder.icons`; nil, or any other
+    /// name, is the plain folder.
+    func setIcon(_ id: UUID, to symbol: String?) {
+        let symbol = symbol.flatMap { WorkFolder.icon(named: $0) }
+        guard let at = folders.firstIndex(where: { $0.id == id }), folders[at].symbol != symbol else { return }
+        folders[at].symbol = symbol
+        save()
+    }
+
     func rename(_ id: UUID, to name: String) {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, let at = folders.firstIndex(where: { $0.id == id }), folders[at].name != name else { return }
@@ -391,6 +428,17 @@ final class Workspace {
         guard !words.isEmpty else { return [] }
         return items.filter { item in
             let hay = ([item.title, item.url, item.notes] + item.tags).joined(separator: " ").lowercased()
+            return words.allSatisfy { hay.contains($0) }
+        }
+    }
+
+    /// Folders whose path holds every word typed, the ones nearest the top
+    /// first.
+    func searchFolders(_ text: String) -> [WorkFolder] {
+        let words = text.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
+        guard !words.isEmpty else { return [] }
+        return flattened().filter { folder in
+            let hay = path(of: folder.id).lowercased()
             return words.allSatisfy { hay.contains($0) }
         }
     }

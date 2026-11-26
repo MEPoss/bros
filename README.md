@@ -14,6 +14,8 @@ macOS 14 or later · Mac only · [Download the latest `Bros.dmg`](../../releases
 
 ### The Workspace
 
+![A folder of links in the list view, with the folders and sections down the left](.github/screens/workspace-list.png)
+
 Open it with **`⌘K`** (Bookmarks › Show Workspace…), from the door icon at the foot of the tab column, or with **`⇧⌘O`** to put it in the sidebar. It is a *view of your open tabs*, not a list of bookmarks: a page you open appears in the **Inbox** by itself, and a page whose tab you close goes away again unless you filed or kept it.
 
 - **Sections:** Inbox, To do, Due this week, and your own **folders**, nested as deep as you like. The sections are a tree on the left; the links of the one you pick are on the right.
@@ -22,7 +24,15 @@ Open it with **`⌘K`** (Bookmarks › Show Workspace…), from the door icon at
 - **Drag and drop:** drag links onto a folder or onto the Inbox, and folders onto folders. Pick several with the mouse as in the Finder (click, ⌘-click, ⇧-click, or a rubber band).
 - **Folders where you are:** right-click empty space for *New Folder*, or select links and choose *Create Folder from Selection*.
 - **Keep When Closed:** a link you keep stays in the Workspace after its tab is gone. **`⌥⌘S`** keeps the page in front.
-- **Delete:** ⌫ on selected links asks first, then takes them out and closes their tabs.
+- **Delete:** `⌘⌫` on selected links or a folder asks first. Links are taken out and their tabs closed; a folder's links go to the Inbox.
+- **Icons for folders:** right-click a folder › Icon, and pick one of thirty.
+- **Search:** the field above the tree finds folders and links; the Workspace page has its own.
+
+| Icons | To do |
+|---|---|
+| ![The Inbox in the icon view, with folders carrying their own icons](.github/screens/workspace-icons.png) | ![Everything still to do, across folders](.github/screens/workspace-todo.png) |
+
+*Drawn from sample links; the folder icons are the ones you pick from a folder's menu.*
 
 ### Keyboard first
 
@@ -34,7 +44,7 @@ Open it with **`⌘K`** (Bookmarks › Show Workspace…), from the door icon at
 | `⌥⌘↓` / `⌥⌘↑` | Next / previous page in the list on the left. Goes round from the last to the first. Works with the caret in a page's text field, Google's included. |
 | `⌥⌘→` / `⌥⌘←` | Next / previous section of the Workspace |
 | `↑ ↓ ← →` | Inside the Workspace: move through the sections, open and close folders, and cross to the links on the right and back. `Return` opens. |
-| `⌫` | Delete the selected links (with a confirmation) |
+| `⌘⌫` | Delete the selected links, or the folder, with a confirmation |
 
 The plain arrows belong to the Workspace until you click on a page, which gives the keyboard back to it. `⇧⌘O` or a click on the Workspace takes it again.
 
